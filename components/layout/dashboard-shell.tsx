@@ -33,7 +33,7 @@ export function DashboardShell({ user, children }: Props) {
         className="flex flex-col min-h-screen w-full transition-[margin] duration-300 lg:ml-[var(--sidebar-w,240px)]"
       >
         <Header user={user} onMenuToggle={() => setMobileOpen(o => !o)} />
-        <main className="flex-1 pt-16 p-4 md:p-6">{children}</main>
+        <main className="flex-1 pt-20 p-4 md:p-6">{children}</main>
       </div>
     </div>
   );
