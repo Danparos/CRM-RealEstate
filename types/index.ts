@@ -34,9 +34,12 @@ export interface Agent {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: UserRole;
   languages: string[];
+  active?: boolean;
   avatar?: string;
+  createdAt?: string;
 }
 
 export type Salutation = "Mr." | "Mrs." | "Ms." | "Dr." | "Prof.";
