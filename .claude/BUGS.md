@@ -1,2 +1,0 @@
-# BUGS
-(no bugs yet)
