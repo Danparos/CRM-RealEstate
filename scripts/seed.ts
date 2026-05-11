@@ -119,6 +119,12 @@ function activityToRow(a: Activity): Record<string, unknown> {
 }
 
 // ─── Seed ─────────────────────────────────────────────────────────────────────
+const SEED_AGENTS = [
+  { id: "errikos", name: "Errikos Kohls",       email: "errikos@kohlsrealty.gr", phone: "+30 694 100 0001", role: "admin",        languages: ["English","Greek","German"], active: true, created_at: "2022-01-01" },
+  { id: "klaus",   name: "Klaus Weber",          email: "klaus@kohlsrealty.gr",   phone: "+30 694 100 0002", role: "senior_agent", languages: ["German","English","Greek"],  active: true, created_at: "2022-03-15" },
+  { id: "anna",    name: "Anna Papadopoulos",    email: "anna@kohlsrealty.gr",    phone: "+30 694 100 0003", role: "agent",        languages: ["Greek","English"],           active: true, created_at: "2023-06-01" },
+];
+
 async function seed() {
   console.log("Seeding database…\n");
 
@@ -154,6 +160,17 @@ async function seed() {
     .upsert(activityRows, { onConflict: "id", ignoreDuplicates: true });
   if (activityError) {
     console.error("  ERROR (activities):", activityError.message);
+  } else {
+    console.log("  OK");
+  }
+
+  // Agents
+  console.log(`Upserting ${SEED_AGENTS.length} agents…`);
+  const { error: agentError } = await supabase
+    .from("agents")
+    .upsert(SEED_AGENTS, { onConflict: "id", ignoreDuplicates: true });
+  if (agentError) {
+    console.error("  ERROR (agents):", agentError.message);
   } else {
     console.log("  OK");
   }

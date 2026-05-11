@@ -111,6 +111,18 @@ create table if not exists property_photos (
   created_at  timestamptz default now()
 );
 
+-- AGENTS
+create table if not exists agents (
+  id          text primary key,
+  name        text not null,
+  email       text not null,
+  phone       text,
+  role        text not null default 'agent',
+  languages   text[]   default '{}',
+  active      boolean  default true,
+  created_at  timestamptz default now()
+);
+
 -- CUSTOM AREAS
 create table if not exists custom_areas (
   id   uuid primary key default gen_random_uuid(),
@@ -122,6 +134,7 @@ grant usage  on schema public to anon;
 grant all    on all tables    in schema public to anon;
 grant all    on all sequences in schema public to anon;
 
+alter table agents         disable row level security;
 alter table clients        disable row level security;
 alter table properties     disable row level security;
 alter table activities     disable row level security;

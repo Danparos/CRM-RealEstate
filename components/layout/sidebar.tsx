@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, Users, Building2, GitMerge, CalendarDays, BarChart3, Settings, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Users, Building2, GitMerge, CalendarDays, BarChart3, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 
@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { label: "Properties", icon: Building2,        href: "/properties" },
   { label: "Calendar",   icon: CalendarDays,     href: "/calendar"   },
   { label: "Reports",    icon: BarChart3,        href: "/reports"    },
-  { label: "Settings",   icon: Settings,         href: "/settings"   },
+  { label: "Admin",      icon: ShieldCheck,      href: "/admin"      },
 ];
 
 const CLASS_FILTERS = [
