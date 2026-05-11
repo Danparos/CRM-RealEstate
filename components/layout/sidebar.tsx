@@ -189,14 +189,11 @@ export function Sidebar({ user }: SidebarProps) {
       <div className="relative px-4 py-7 border-b border-warm-100 min-h-[80px] flex items-center">
         <div className="absolute left-0 top-6 bottom-6 w-[3px] rounded-r-full bg-gradient-to-b from-[#B8960C] to-[#CD853F]" />
         {collapsed ? (
-          <span className="mx-auto text-[#B8960C] font-serif font-bold text-lg leading-none">E</span>
+          <span className="mx-auto text-[#B8960C] font-serif font-bold text-lg leading-none">R</span>
         ) : (
           <div className="pl-2 pr-8">
             <p className="font-serif text-[17px] font-semibold tracking-[0.12em] uppercase leading-tight text-[#B8960C]">
-              Errikos Kohls
-            </p>
-            <p className="mt-0.5 text-[10px] tracking-[0.18em] uppercase text-warm-400 font-medium">
-              Immobilien Consulting
+              Real Estate CRM
             </p>
           </div>
         )}
