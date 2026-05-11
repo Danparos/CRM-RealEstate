@@ -1,10 +1,11 @@
 "use client"
 import { usePathname } from "next/navigation"
-import { Search, Bell } from "lucide-react"
+import { Search, Bell, Menu } from "lucide-react"
 import { Avatar } from "@/components/ui/avatar"
 
 interface HeaderProps {
-  user: { name: string; avatar?: string }
+  user: { name: string; avatar?: string };
+  onMenuToggle?: () => void;
 }
 
 const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
@@ -23,7 +24,7 @@ function getPageMeta(pathname: string) {
   return match ? PAGE_TITLES[match] : { title: "Dashboard", subtitle: "" }
 }
 
-export function Header({ user }: HeaderProps) {
+export function Header({ user, onMenuToggle }: HeaderProps) {
   const pathname = usePathname()
   const { title, subtitle } = getPageMeta(pathname)
 
@@ -34,9 +35,18 @@ export function Header({ user }: HeaderProps) {
 
   return (
     <header
-      className="fixed top-0 right-0 z-30 flex h-16 items-center justify-between bg-white border-b border-warm-200 px-8"
-      style={{ left: "240px" }}
+      className="fixed top-0 right-0 z-30 flex h-16 items-center justify-between bg-white border-b border-warm-200 px-4 md:px-8 left-0 lg:left-[var(--sidebar-w,240px)]"
     >
+      {/* Mobile hamburger */}
+      <button
+        type="button"
+        onClick={onMenuToggle}
+        className="lg:hidden flex h-9 w-9 items-center justify-center rounded-full text-warm-400 hover:bg-warm-100 hover:text-warm-700 transition-colors mr-2"
+        aria-label="Open menu"
+      >
+        <Menu size={20} strokeWidth={1.75} />
+      </button>
+
       {!hideTitleBar && (
         <div className="flex flex-col justify-center">
           <h1 className="font-serif text-[22px] font-semibold leading-tight tracking-wide text-warm-900">

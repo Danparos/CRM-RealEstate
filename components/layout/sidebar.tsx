@@ -53,6 +53,8 @@ const PROPERTY_STATUSES = [
 interface SidebarProps {
   user: { name: string; role: string; avatar?: string };
   activePath?: string;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 function SubFilters({
@@ -160,7 +162,7 @@ function SubFilters({
   );
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname     = usePathname();
   const searchParams = useSearchParams();
   const router       = useRouter();
@@ -183,13 +185,23 @@ export function Sidebar({ user }: SidebarProps) {
   return (
     <aside className={cn(
       "fixed left-0 top-0 z-40 flex h-screen flex-col bg-white border-r border-warm-200 transition-all duration-300 overflow-hidden",
-      collapsed ? "w-16" : "w-[240px]"
+      // Desktop: collapse/expand
+      collapsed ? "lg:w-16" : "lg:w-[240px]",
+      // Mobile: full-width drawer, slides in/out
+      "w-[240px]",
+      mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
     )}>
-      {/* Toggle button */}
+      {/* Mobile close button */}
+      {mobileOpen && (
+        <button onClick={onMobileClose} className="absolute right-3 top-3 z-50 lg:hidden flex h-7 w-7 items-center justify-center rounded-full border border-warm-200 bg-white text-warm-400">
+          <ChevronLeft size={14} strokeWidth={2.5} />
+        </button>
+      )}
+      {/* Desktop toggle button */}
       <button
         onClick={() => setCollapsed(c => !c)}
         title={collapsed ? "Expand menu" : "Collapse menu"}
-        className="absolute right-2 top-7 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-warm-200 bg-white shadow-sm hover:bg-warm-50 hover:border-[#B8960C] hover:text-[#B8960C] transition-colors text-warm-400"
+        className="hidden lg:flex absolute right-2 top-7 z-50 h-6 w-6 items-center justify-center rounded-full border border-warm-200 bg-white shadow-sm hover:bg-warm-50 hover:border-[#B8960C] hover:text-[#B8960C] transition-colors text-warm-400"
       >
         {collapsed ? <ChevronRight size={12} strokeWidth={2.5} /> : <ChevronLeft size={12} strokeWidth={2.5} />}
       </button>
