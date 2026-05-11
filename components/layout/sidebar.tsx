@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { LayoutDashboard, Users, Building2, GitMerge, CalendarDays, BarChart3, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { LayoutDashboard, Users, Building2, GitMerge, CalendarDays, BarChart3, ShieldCheck, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
+import { createClient } from "@/lib/supabase/client";
 
 const NAV_ITEMS = [
   { label: "Dashboard",  icon: LayoutDashboard, href: "/dashboard"  },
@@ -162,10 +163,18 @@ function SubFilters({
 export function Sidebar({ user }: SidebarProps) {
   const pathname     = usePathname();
   const searchParams = useSearchParams();
+  const router       = useRouter();
   const activeClass  = searchParams.get("class");
   const activeStage  = searchParams.get("stage");
   const activeStatus = searchParams.get("status");
   const [collapsed, setCollapsed] = useState(false);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
 
   useEffect(() => {
     document.documentElement.style.setProperty("--sidebar-w", collapsed ? "64px" : "240px");
@@ -245,6 +254,13 @@ export function Sidebar({ user }: SidebarProps) {
               <p className="truncate text-[11px] text-warm-400 mt-0.5 tracking-wide">{user.role}</p>
             </div>
           )}
+          <button
+            onClick={handleLogout}
+            title="Sign out"
+            className="shrink-0 p-1.5 rounded-lg text-stone-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+          >
+            <LogOut size={14} strokeWidth={2} />
+          </button>
         </div>
       </div>
     </aside>
