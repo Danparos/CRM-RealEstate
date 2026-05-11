@@ -45,7 +45,7 @@ const NATIONALITY_OPTIONS = [
   { value: "IT", label: "🇮🇹 Italy" }, { value: "AU", label: "🇦🇺 Australia" },
 ];
 const AGENT_OPTIONS = [
-  { value: "Errikos Kohls",      label: "Errikos Kohls" },
+  { value: "Dan Paul",      label: "Dan Paul" },
   { value: "Klaus Weber",        label: "Klaus Weber" },
   { value: "Anna Papadopoulos",  label: "Anna Papadopoulos" },
 ];

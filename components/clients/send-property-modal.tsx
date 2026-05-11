@@ -43,8 +43,8 @@ Reference: _${p.reference}_
 Would you like to arrange a private viewing? I'm available this week.
 
 Best regards,
-${client.primaryAgent ?? "Errikos Kohls"}
-Errikos Kohls Immobilien Consulting`;
+${client.primaryAgent ?? "Dan Paul"}
+Dan Paul Immobilien Consulting`;
 }
 
 function buildEmail(client: Client, p: Property): string {
@@ -68,16 +68,16 @@ I would be delighted to arrange a private viewing at your convenience. Please fe
 
 Kind regards,
 
-${client.primaryAgent ?? "Errikos Kohls"}
-Errikos Kohls Immobilien Consulting
+${client.primaryAgent ?? "Dan Paul"}
+Dan Paul Immobilien Consulting
 Paros, Greece`;
 }
 
 function buildSMS(client: Client, p: Property): string {
   const beds = `${p.bedrooms}bd`;
   const price = formatCurrency(p.askingPrice);
-  const agent = (client.primaryAgent ?? "Errikos Kohls").split(" ")[0];
-  return `Hi ${client.firstName}, ${agent} here from Errikos Kohls. I found a property matching your search: ${p.title.en}, ${p.area} — ${price}, ${beds}${p.pool ? ", pool" : ""}${p.seaView ? ", sea view" : ""}. Ref: ${p.reference}. Interested in a viewing?`;
+  const agent = (client.primaryAgent ?? "Dan Paul").split(" ")[0];
+  return `Hi ${client.firstName}, ${agent} here from Dan Paul. I found a property matching your search: ${p.title.en}, ${p.area} — ${price}, ${beds}${p.pool ? ", pool" : ""}${p.seaView ? ", sea view" : ""}. Ref: ${p.reference}. Interested in a viewing?`;
 }
 
 function WhatsAppPreview({ text }: { text: string }) {
@@ -88,7 +88,7 @@ function WhatsAppPreview({ text }: { text: string }) {
       <div className="bg-[#128C7E] px-4 py-3 flex items-center gap-3">
         <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-bold">EK</div>
         <div>
-          <p className="text-white text-sm font-semibold leading-none">Errikos Kohls</p>
+          <p className="text-white text-sm font-semibold leading-none">Dan Paul</p>
           <p className="text-white/70 text-[10px] mt-0.5">online</p>
         </div>
       </div>
@@ -132,7 +132,7 @@ function EmailPreview({ text }: { text: string }) {
       <div className="bg-stone-50 border-b border-stone-200 px-4 py-3 space-y-1.5">
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-stone-400 uppercase tracking-wider w-12">From</span>
-          <span className="text-stone-700 text-xs">{(text.match(/Kind regards,\n\n(.*)/)?.[1] ?? "Errikos Kohls")} &lt;info@errikos-kohls.com&gt;</span>
+          <span className="text-stone-700 text-xs">{(text.match(/Kind regards,\n\n(.*)/)?.[1] ?? "Dan Paul")} &lt;info@errikos-kohls.com&gt;</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-stone-400 uppercase tracking-wider w-12">To</span>

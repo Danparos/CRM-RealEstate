@@ -120,7 +120,7 @@ function activityToRow(a: Activity): Record<string, unknown> {
 
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 const SEED_AGENTS = [
-  { id: "errikos", name: "Errikos Kohls",       email: "errikos@kohlsrealty.gr", phone: "+30 694 100 0001", role: "admin",        languages: ["English","Greek","German"], active: true, created_at: "2022-01-01" },
+  { id: "errikos", name: "Dan Paul",       email: "errikos@kohlsrealty.gr", phone: "+30 694 100 0001", role: "admin",        languages: ["English","Greek","German"], active: true, created_at: "2022-01-01" },
   { id: "klaus",   name: "Klaus Weber",          email: "klaus@kohlsrealty.gr",   phone: "+30 694 100 0002", role: "senior_agent", languages: ["German","English","Greek"],  active: true, created_at: "2022-03-15" },
   { id: "anna",    name: "Anna Papadopoulos",    email: "anna@kohlsrealty.gr",    phone: "+30 694 100 0003", role: "agent",        languages: ["Greek","English"],           active: true, created_at: "2023-06-01" },
 ];

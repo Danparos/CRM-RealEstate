@@ -16,7 +16,7 @@ const clientsByStage = PIPELINE_STAGES.map((s) => ({
   count: mockClients.filter((c) => c.stage === s.id).length,
 }));
 
-const AGENTS = ["Errikos Kohls", "Klaus Weber", "Anna Papadopoulos"];
+const AGENTS = ["Dan Paul", "Klaus Weber", "Anna Papadopoulos"];
 const clientsByAgent = AGENTS.map((agent) => {
   const ac = mockClients.filter((c) => c.primaryAgent === agent);
   return {

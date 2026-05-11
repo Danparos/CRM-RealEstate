@@ -125,7 +125,7 @@ export default function ReportsPage() {
                   <tr key={agent.name} className="hover:bg-warm-50 transition-colors">
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-2.5">
-                        <div className={`h-7 w-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 ${agent.name === "Errikos Kohls" ? "bg-[#B8960C]" : agent.name === "Klaus Weber" ? "bg-[#CD853F]" : "bg-stone-500"}`}>
+                        <div className={`h-7 w-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 ${agent.name === "Dan Paul" ? "bg-[#B8960C]" : agent.name === "Klaus Weber" ? "bg-[#CD853F]" : "bg-stone-500"}`}>
                           {agent.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                         </div>
                         <span className="font-medium text-stone-800">{agent.name}</span>

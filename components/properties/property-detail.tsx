@@ -37,8 +37,8 @@ const TYPE_LABELS: Record<PropertyType, string> = {
 };
 
 const AGENT_NAMES: Record<string, string> = {
-  errikos:         "Errikos Kohls",
-  errikos_expose:  "Errikos - Property Expose",
+  errikos:         "Dan Paul",
+  errikos_expose:  "Dan - Property Expose",
   klaus:           "Klaus Weber",
   anna:            "Anna Papadopoulos",
 };

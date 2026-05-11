@@ -366,7 +366,7 @@ export function PropertyPDFDocument({ property, photos }: Props) {
 
         {/* ── Footer ── */}
         <View style={S.footer} fixed>
-          <Text style={S.footerL}>© Errikos Kohls Immobilien Consulting · Confidential</Text>
+          <Text style={S.footerL}>© Dan Paul Immobilien Consulting · Confidential</Text>
           <Text style={S.footerR}>ERRIKOS KOHLS</Text>
         </View>
 

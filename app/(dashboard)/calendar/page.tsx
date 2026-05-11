@@ -15,14 +15,14 @@ interface Appointment {
 }
 
 const APPOINTMENTS: Appointment[] = [
-  { id: "apt001", date: "2026-04-27", time: "10:00", type: "viewing",   clientName: "Oliver Hartley",   clientId: "c011", agentName: "Errikos Kohls",     note: "In-person viewing of Villa Aegean Crest, Naoussa — confirm seafront access", location: "Naoussa, Paros" },
-  { id: "apt002", date: "2026-04-27", time: "14:30", type: "call",      clientName: "Sophie Marchand",  clientId: "c002", agentName: "Errikos Kohls",     note: "Initial qualification call — discuss budget range and preferred locations" },
-  { id: "apt003", date: "2026-04-28", time: "09:00", type: "meeting",   clientName: "David Goldstein",  clientId: "c014", agentName: "Errikos Kohls",     note: "Counter-offer strategy session — prepare response to €4.2M bid", location: "Office, Parikia" },
+  { id: "apt001", date: "2026-04-27", time: "10:00", type: "viewing",   clientName: "Oliver Hartley",   clientId: "c011", agentName: "Dan Paul",     note: "In-person viewing of Villa Aegean Crest, Naoussa — confirm seafront access", location: "Naoussa, Paros" },
+  { id: "apt002", date: "2026-04-27", time: "14:30", type: "call",      clientName: "Sophie Marchand",  clientId: "c002", agentName: "Dan Paul",     note: "Initial qualification call — discuss budget range and preferred locations" },
+  { id: "apt003", date: "2026-04-28", time: "09:00", type: "meeting",   clientName: "David Goldstein",  clientId: "c014", agentName: "Dan Paul",     note: "Counter-offer strategy session — prepare response to €4.2M bid", location: "Office, Parikia" },
   { id: "apt004", date: "2026-04-29", time: "11:00", type: "follow_up", clientName: "Marcus Hoffmann",  clientId: "c001", agentName: "Klaus Weber",       note: "Follow up on website inquiry — send shortlist of Lefkes stone houses" },
   { id: "apt005", date: "2026-04-29", time: "15:00", type: "call",      clientName: "Rachel Cohen",     clientId: "c010", agentName: "Anna Papadopoulos", note: "Post virtual-tour call — gather feedback on Golden Beach property" },
-  { id: "apt006", date: "2026-05-05", time: "10:30", type: "signing",   clientName: "Pieter de Vries",  clientId: "c016", agentName: "Errikos Kohls",     note: "Notary signing appointment — final contract for Kolymbithres villa", location: "Notary Office, Parikia" },
+  { id: "apt006", date: "2026-05-05", time: "10:30", type: "signing",   clientName: "Pieter de Vries",  clientId: "c016", agentName: "Dan Paul",     note: "Notary signing appointment — final contract for Kolymbithres villa", location: "Notary Office, Parikia" },
   { id: "apt007", date: "2026-05-07", time: "13:00", type: "viewing",   clientName: "Thomas Breitner",  clientId: "c007", agentName: "Klaus Weber",       note: "Tour of three Naoussa sea-view properties — bring updated pricing sheets", location: "Naoussa, Paros" },
-  { id: "apt008", date: "2026-05-15", time: "16:00", type: "meeting",   clientName: "Yael Ben-David",   clientId: "c005", agentName: "Errikos Kohls",     note: "Strategy meeting to present off-market estate options — ultra-prime segment", location: "Office, Parikia" },
+  { id: "apt008", date: "2026-05-15", time: "16:00", type: "meeting",   clientName: "Yael Ben-David",   clientId: "c005", agentName: "Dan Paul",     note: "Strategy meeting to present off-market estate options — ultra-prime segment", location: "Office, Parikia" },
 ];
 
 const TYPE_CONFIG: Record<AppointmentType, { label: string; bg: string; text: string; icon: string }> = {
@@ -34,7 +34,7 @@ const TYPE_CONFIG: Record<AppointmentType, { label: string; bg: string; text: st
 };
 
 const AGENT_AVATARS: Record<string, { initials: string; bg: string }> = {
-  "Errikos Kohls":     { initials: "EK", bg: "bg-[#B8960C]" },
+  "Dan Paul":     { initials: "DP", bg: "bg-[#B8960C]" },
   "Klaus Weber":       { initials: "KW", bg: "bg-[#CD853F]" },
   "Anna Papadopoulos": { initials: "AP", bg: "bg-stone-500" },
 };

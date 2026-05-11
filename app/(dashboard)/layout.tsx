@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 
-const mockUser = { name: "Errikos Kohls", role: "Office Manager" };
+const mockUser = { name: "Dan Paul", role: "Office Manager" };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (

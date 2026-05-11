@@ -17,7 +17,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Errikos Kohls | Paros Real Estate CRM",
+  title: "Dan Paul | Paros Real Estate CRM",
   description: "Luxury real estate management — Paros, Greece",
 };
 

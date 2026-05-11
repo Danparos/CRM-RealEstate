@@ -18,7 +18,7 @@ export default function DesignSystemPage() {
         <div className="border-b border-warm-200 pb-8">
           <p className="text-xs tracking-[0.2em] uppercase text-gold-500 font-medium mb-2">Design System</p>
           <h1 className="font-serif text-5xl font-light text-warm-900 tracking-wide">
-            Errikos Kohls
+            Dan Paul
           </h1>
           <p className="text-warm-500 mt-2 tracking-widest text-sm uppercase">Immobilien Consulting · Paros, Greece</p>
         </div>
@@ -137,7 +137,7 @@ export default function DesignSystemPage() {
         <section className="space-y-4">
           <h2 className="text-xs tracking-[0.2em] uppercase text-warm-400 font-medium">Avatars</h2>
           <div className="flex gap-4 items-center">
-            <Avatar name="Errikos Kohls" size="xl" />
+            <Avatar name="Dan Paul" size="xl" />
             <Avatar name="Anna Papadopoulos" size="lg" />
             <Avatar name="Klaus Weber" size="default" />
             <Avatar name="Marie Dubois" size="sm" />

@@ -59,7 +59,7 @@ const MARKETING_OPTIONS: { value: MarketingMethod; label: string }[] = [
 
 
 const AGENT_OPTIONS = [
-  { value: "errikos", label: "Errikos Kohls"      },
+  { value: "errikos", label: "Dan Paul"      },
   { value: "klaus",   label: "Klaus Weber"        },
   { value: "anna",    label: "Anna Papadopoulos"  },
 ];

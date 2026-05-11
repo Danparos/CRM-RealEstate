@@ -15,7 +15,7 @@ const activeDeals   = mockClients.filter(c => c.stage !== "signed_closed").lengt
 const listingValue  = mockProperties.filter(p => p.status === "available" || p.status === "under_offer").reduce((s, p) => s + p.askingPrice, 0);
 
 const AGENTS = [
-  { name: "Errikos Kohls",     initials: "EK", color: "#B8960C", role: "Managing Partner"    },
+  { name: "Dan Paul",     initials: "EK", color: "#B8960C", role: "Managing Partner"    },
   { name: "Klaus Weber",       initials: "KW", color: "#CD853F", role: "Senior Consultant"   },
   { name: "Anna Papadopoulos", initials: "AP", color: "#6b7280", role: "Junior Consultant"   },
 ].map(a => {
@@ -49,7 +49,7 @@ function SlideCover() {
       <div className="relative z-10 flex flex-col items-center gap-6 px-16 text-center">
         <p className="text-[#B8960C] text-xs tracking-[0.4em] uppercase font-medium">Paros, Greece</p>
         <h1 className="font-serif text-[72px] leading-[1.05] font-semibold text-white tracking-tight">
-          Errikos Kohls<br/>
+          Dan Paul<br/>
           <span className="text-[#B8960C]">Immobilien</span>
         </h1>
         <div className="w-24 h-px bg-gradient-to-r from-transparent via-[#B8960C] to-transparent" />
@@ -291,7 +291,7 @@ function SlideThankYou() {
       <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle, rgba(184,150,12,0.12) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
       <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(184,150,12,0.08), transparent)" }} />
       <div className="relative z-10 flex flex-col items-center gap-8 px-16 text-center">
-        <p className="text-[#B8960C]/60 text-xs tracking-[0.4em] uppercase font-medium">Errikos Kohls Immobilien Consulting</p>
+        <p className="text-[#B8960C]/60 text-xs tracking-[0.4em] uppercase font-medium">Dan Paul Immobilien Consulting</p>
         <h1 className="font-serif text-[80px] leading-none font-semibold text-white">Thank You</h1>
         <div className="w-24 h-px bg-gradient-to-r from-transparent via-[#B8960C] to-transparent" />
         <p className="text-stone-300 text-xl font-light tracking-wide max-w-lg">
