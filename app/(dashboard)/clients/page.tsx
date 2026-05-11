@@ -3,7 +3,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, Search, X, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
-import { mockClients } from "@/lib/mock-data";
+import { getAllClients } from "@/lib/db/clients";
 import { ClientCard } from "@/components/clients/client-card";
 import type { Client, ClientClass, PriceGroup } from "@/types";
 
@@ -212,11 +212,11 @@ function Chip({ label, onRemove }: { label: string | undefined; onRemove: () => 
 function Inner() {
   const sp = useSearchParams();
 
-  const [extras,    setExtras]    = useState<Client[]>([]);
-  const [overrides, setOverrides] = useState<Record<string, Client>>({});
-  const [query,     setQuery]     = useState("");
-  const [showPanel, setShowPanel] = useState(false);
-  const [filters,   setFilters]   = useState<Filters>(() => ({
+  const [allClientsRaw, setAllClientsRaw] = useState<Client[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [query,         setQuery]         = useState("");
+  const [showPanel,     setShowPanel]     = useState(false);
+  const [filters,       setFilters]       = useState<Filters>(() => ({
     ...EMPTY_FILTERS,
     clientClass: (VALID.includes(sp.get("class") as ClientClass) ? sp.get("class") as ClientClass : "") as ClientClass | "",
     stage: sp.get("stage") ?? "",
@@ -225,8 +225,9 @@ function Inner() {
   const showArchived = sp.get("status") === "archived";
 
   useEffect(() => {
-    try { setExtras(JSON.parse(localStorage.getItem("crm-extra-clients") ?? "[]") as Client[]); } catch {}
-    try { setOverrides(JSON.parse(localStorage.getItem("crm-client-overrides") ?? "{}") as Record<string, Client>); } catch {}
+    getAllClients()
+      .then(setAllClientsRaw)
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -240,7 +241,7 @@ function Inner() {
 
   const clearAll = () => { setFilters(EMPTY_FILTERS); setQuery(""); };
 
-  const allClients = [...mockClients, ...extras].map(c => overrides[c.id] ?? c);
+  const allClients = allClientsRaw;
   const scopedClients = showArchived
     ? allClients.filter(c => c.archived)
     : allClients.filter(c => !c.archived);
@@ -397,7 +398,13 @@ function Inner() {
       )}
 
       {/* Results */}
-      {results.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-40 rounded-xl bg-stone-100 animate-pulse" />
+          ))}
+        </div>
+      ) : results.length === 0 ? (
         <div className="py-16 text-center space-y-2">
           <p className="text-stone-400 text-sm">No clients match the current filters.</p>
           <button onClick={clearAll} className="text-xs text-[#B8960C] hover:underline">Clear all filters</button>

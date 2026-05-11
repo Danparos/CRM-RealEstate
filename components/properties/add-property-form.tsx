@@ -2,33 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { mockProperties } from "@/lib/mock-data";
 import type {
   Property, PropertyType, PropertyStatus, PropertyCondition,
   EnergyClass, ContractType, PropertyUsage, MarketingMethod,
 } from "@/types";
 import { HEATING_OPTIONS, FEATURE_OPTIONS } from "@/lib/constants";
 import { AreaSelect } from "@/components/properties/area-select";
-
-const EXTRA_KEY = "crm-extra-properties";
-
-function nextReference(): string {
-  try {
-    const extras = JSON.parse(localStorage.getItem(EXTRA_KEY) ?? "[]") as Property[];
-    const nums = [...mockProperties, ...extras]
-      .map(p => parseInt(p.reference.replace(/\D/g, "")) || 0);
-    const max = Math.max(0, ...nums);
-    return `EK-${String(max + 1).padStart(3, "0")}`;
-  } catch {
-    return `EK-${String(mockProperties.length + 1).padStart(3, "0")}`;
-  }
-}
-
-function saveExtra(property: Property) {
-  const extras = JSON.parse(localStorage.getItem(EXTRA_KEY) ?? "[]") as Property[];
-  extras.push(property);
-  localStorage.setItem(EXTRA_KEY, JSON.stringify(extras));
-}
+import { upsertProperty, getNextReference } from "@/lib/db/properties";
 
 const TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: "villa",              label: "Villa"              },
@@ -103,6 +83,7 @@ const textareaCls = "w-full rounded-lg border border-stone-200 bg-white px-3 py-
 
 export function AddPropertyForm() {
   const router = useRouter();
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
     titleEn: "", titleDe: "", titleFr: "", titleEl: "",
@@ -139,65 +120,71 @@ export function AddPropertyForm() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const id = `prop-new-${Date.now()}`;
-    const reference = nextReference();
+    setSaving(true);
 
-    const coords = form.coordinates.split(",").map(s => s.trim());
-    const lat = coords[0] ? Number(coords[0]) : undefined;
-    const lng = coords[1] ? Number(coords[1]) : undefined;
+    try {
+      const id = `prop-new-${Date.now()}`;
+      const reference = await getNextReference();
 
-    const property: Property = {
-      id, reference,
-      title: { en: form.titleEn, de: form.titleDe, fr: form.titleFr, el: form.titleEl },
-      agentId: form.agentId,
-      coAgentIds: form.coAgentIds.length ? form.coAgentIds : undefined,
-      ownershipGroup:       form.ownershipGroup || undefined,
-      recordingResponsible: form.recordingResponsible || undefined,
-      displayOnWebsite: form.displayOnWebsite,
-      disabled:         form.disabled,
-      keysAvailable:    form.keysAvailable,
-      type:            form.type,
-      status:          form.status,
-      usage:           form.usage,
-      marketingMethod: form.marketingMethod,
-      contractType:    form.contractType,
-      area:       form.area,
-      island:     form.island || undefined,
-      country:    form.country || undefined,
-      scoutRegion: form.scoutRegion || undefined,
-      address:    form.address || undefined,
-      postalCode: form.postalCode || undefined,
-      lat: lat && !isNaN(lat) ? lat : undefined,
-      lng: lng && !isNaN(lng) ? lng : undefined,
-      askingPrice:      Number(form.askingPrice) || 0,
-      buyerCommission:  form.buyerCommission ? Number(form.buyerCommission) : undefined,
-      sellerCommission: form.sellerCommission ? Number(form.sellerCommission) : undefined,
-      bedrooms:  Number(form.bedrooms) || 0,
-      bathrooms: Number(form.bathrooms) || 0,
-      rooms:     form.rooms ? Number(form.rooms) : undefined,
-      floors:    form.floors ? Number(form.floors) : undefined,
-      buildArea: Number(form.buildArea) || 0,
-      buildableArea: form.buildableArea ? Number(form.buildableArea) : undefined,
-      plotArea:  form.plotArea ? Number(form.plotArea) : undefined,
-      balconies: form.balconies ? Number(form.balconies) : undefined,
-      terraces:  form.terraces ? Number(form.terraces) : undefined,
-      yearOfConstruction: form.yearOfConstruction ? Number(form.yearOfConstruction) : undefined,
-      condition:   form.condition ? form.condition as PropertyCondition : undefined,
-      energyClass: form.energyClass ? form.energyClass as EnergyClass : undefined,
-      distanceFromSea: form.distanceFromSea ? Number(form.distanceFromSea) : undefined,
-      seafront: form.seafront,
-      seaView:  form.seaView,
-      pool:     form.pool,
-      heatingTypes: form.heatingTypes.length ? form.heatingTypes : undefined,
-      features:     form.features.length ? form.features : undefined,
-      description:  form.description || undefined,
-      comments:     form.comments || undefined,
-    };
+      const coords = form.coordinates.split(",").map(s => s.trim());
+      const lat = coords[0] ? Number(coords[0]) : undefined;
+      const lng = coords[1] ? Number(coords[1]) : undefined;
 
-    saveExtra(property);
-    router.push(`/properties/${id}`);
+      const property: Property = {
+        id, reference,
+        title: { en: form.titleEn, de: form.titleDe, fr: form.titleFr, el: form.titleEl },
+        agentId: form.agentId,
+        coAgentIds: form.coAgentIds.length ? form.coAgentIds : undefined,
+        ownershipGroup:       form.ownershipGroup || undefined,
+        recordingResponsible: form.recordingResponsible || undefined,
+        displayOnWebsite: form.displayOnWebsite,
+        disabled:         form.disabled,
+        keysAvailable:    form.keysAvailable,
+        type:            form.type,
+        status:          form.status,
+        usage:           form.usage,
+        marketingMethod: form.marketingMethod,
+        contractType:    form.contractType,
+        area:       form.area,
+        island:     form.island || undefined,
+        country:    form.country || undefined,
+        scoutRegion: form.scoutRegion || undefined,
+        address:    form.address || undefined,
+        postalCode: form.postalCode || undefined,
+        lat: lat && !isNaN(lat) ? lat : undefined,
+        lng: lng && !isNaN(lng) ? lng : undefined,
+        askingPrice:      Number(form.askingPrice) || 0,
+        buyerCommission:  form.buyerCommission ? Number(form.buyerCommission) : undefined,
+        sellerCommission: form.sellerCommission ? Number(form.sellerCommission) : undefined,
+        bedrooms:  Number(form.bedrooms) || 0,
+        bathrooms: Number(form.bathrooms) || 0,
+        rooms:     form.rooms ? Number(form.rooms) : undefined,
+        floors:    form.floors ? Number(form.floors) : undefined,
+        buildArea: Number(form.buildArea) || 0,
+        buildableArea: form.buildableArea ? Number(form.buildableArea) : undefined,
+        plotArea:  form.plotArea ? Number(form.plotArea) : undefined,
+        balconies: form.balconies ? Number(form.balconies) : undefined,
+        terraces:  form.terraces ? Number(form.terraces) : undefined,
+        yearOfConstruction: form.yearOfConstruction ? Number(form.yearOfConstruction) : undefined,
+        condition:   form.condition ? form.condition as PropertyCondition : undefined,
+        energyClass: form.energyClass ? form.energyClass as EnergyClass : undefined,
+        distanceFromSea: form.distanceFromSea ? Number(form.distanceFromSea) : undefined,
+        seafront: form.seafront,
+        seaView:  form.seaView,
+        pool:     form.pool,
+        heatingTypes: form.heatingTypes.length ? form.heatingTypes : undefined,
+        features:     form.features.length ? form.features : undefined,
+        description:  form.description || undefined,
+        comments:     form.comments || undefined,
+      };
+
+      await upsertProperty(property);
+      router.push(`/properties/${id}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -446,12 +433,14 @@ export function AddPropertyForm() {
       {/* Actions */}
       <div className="flex gap-3 pt-2 border-t border-stone-100">
         <button type="button" onClick={() => router.push("/properties")}
-          className="flex-1 h-10 rounded-lg border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors">
+          disabled={saving}
+          className="flex-1 h-10 rounded-lg border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors disabled:opacity-50">
           Cancel
         </button>
         <button type="submit"
-          className="flex-1 h-10 rounded-lg bg-[#B8960C] text-white text-sm font-semibold hover:bg-[#9e7f0a] transition-colors shadow-sm">
-          Create Property
+          disabled={saving}
+          className="flex-1 h-10 rounded-lg bg-[#B8960C] text-white text-sm font-semibold hover:bg-[#9e7f0a] transition-colors shadow-sm disabled:opacity-50">
+          {saving ? "Saving…" : "Create Property"}
         </button>
       </div>
     </form>

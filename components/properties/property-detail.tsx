@@ -7,6 +7,8 @@ import { ArrowLeft, Pencil, Waves, Droplets, Mountain, MapPin, Navigation, Check
 import { EditPropertyForm } from "@/components/properties/edit-property-form";
 import { formatCurrency } from "@/lib/utils";
 import { AreaSelect } from "@/components/properties/area-select";
+import { getProperty, upsertProperty } from "@/lib/db/properties";
+import { getPhotosForProperty } from "@/lib/db/photos";
 import type { Property, PropertyStatus, PropertyType } from "@/types";
 
 const PropertyPhotoGallery = dynamic(
@@ -79,26 +81,6 @@ function Box({
   );
 }
 
-const STORAGE_KEY = "crm-property-overrides";
-
-function loadOverride(id: string): Property | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const map: Record<string, Property> = JSON.parse(raw);
-    return map[id] ?? null;
-  } catch { return null; }
-}
-
-function saveOverride(property: Property) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const map: Record<string, Property> = raw ? JSON.parse(raw) : {};
-    map[property.id] = property;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
-  } catch {}
-}
 
 const inp = "w-full rounded-lg border border-stone-200 px-3 py-1.5 text-sm text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#B8960C] focus:border-[#B8960C] bg-white transition-colors";
 const sel = inp;
@@ -134,18 +116,13 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
   const [pdfLoading, setPdfLoading] = useState(false);
 
   useEffect(() => {
-    const override = loadOverride(initial.id);
-    if (override) setProperty(override);
+    getProperty(initial.id).then(override => {
+      if (override) setProperty(override);
+    });
   }, [initial.id]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("crm-property-photos");
-      if (raw) {
-        const map: Record<string, string[]> = JSON.parse(raw);
-        setPdfPhotos(map[initial.id] ?? []);
-      }
-    } catch {}
+    getPhotosForProperty(initial.id).then(setPdfPhotos);
   }, [initial.id]);
 
   const handleDownloadPDF = async () => {
@@ -172,7 +149,7 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
   };
 
   const handleSave = (updated: Property) => {
-    saveOverride(updated);
+    upsertProperty(updated).catch(err => console.error("[PropertyDetail] handleSave:", err));
     setProperty(updated);
     setEditing(false);
   };
@@ -190,7 +167,7 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
   const cancelEdit = () => setEditingSection(null);
 
   const saveSection = () => {
-    saveOverride(draft);
+    upsertProperty(draft).catch(err => console.error("[PropertyDetail] saveSection:", err));
     setProperty(draft);
     setEditingSection(null);
   };

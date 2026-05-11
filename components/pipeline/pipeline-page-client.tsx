@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PipelineBoard } from "@/components/pipeline/pipeline-board";
 import { ClientCard } from "@/components/clients/client-card";
-import { mockClients } from "@/lib/mock-data";
+import { getAllClients } from "@/lib/db/clients";
 import { cn } from "@/lib/utils";
 import type { Client } from "@/types";
 
@@ -34,16 +34,25 @@ export function PipelinePageClient({ stages }: Props) {
   const searchParams = useSearchParams();
   const activeStage  = searchParams.get("stage");
 
-  const [allClients, setAllClients] = useState<Client[]>(mockClients);
+  const [allClients, setAllClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const extras    = JSON.parse(localStorage.getItem("crm-extra-clients")    ?? "[]")  as Client[];
-      const overrides = JSON.parse(localStorage.getItem("crm-client-overrides") ?? "{}") as Record<string, Client>;
-      const merged    = [...mockClients, ...extras].map(c => overrides[c.id] ?? c);
-      setAllClients(merged);
-    } catch {}
+    getAllClients()
+      .then(setAllClients)
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-2 border-[#B8960C] border-t-transparent animate-spin" />
+          <p className="text-sm text-stone-400">Loading pipeline…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (activeStage) {
     const stageCfg   = stages.find(s => s.id === activeStage);

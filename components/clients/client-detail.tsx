@@ -11,9 +11,10 @@ import { PriceGroupBadge } from "@/components/crm/price-group-badge";
 import { PipelineStageBadge } from "@/components/crm/pipeline-stage-badge";
 import { ActivityTimeline } from "@/components/clients/activity-timeline";
 import { EditClientForm } from "@/components/clients/edit-client-form";
-import { mockActivities } from "@/lib/mock-data";
+import { getClient, upsertClient } from "@/lib/db/clients";
+import { getActivitiesForClient } from "@/lib/db/activities";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { Client, PipelineStage } from "@/types";
+import type { Client, PipelineStage, Activity } from "@/types";
 
 const ClientDocuments = dynamic(
   () => import("@/components/clients/client-documents").then(m => ({ default: m.ClientDocuments })),
@@ -173,20 +174,20 @@ export function ClientDetail({ client: initialClient }: Props) {
   const [showEdit, setShowEdit] = useState(false);
   const [showSend, setShowSend] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [activities, setActivities] = useState<Activity[]>([]);
 
   useEffect(() => {
-    try {
-      const overrides = JSON.parse(localStorage.getItem("crm-client-overrides") ?? "{}") as Record<string, Client>;
-      if (overrides[initialClient.id]) setClient(overrides[initialClient.id]);
-    } catch {}
+    getClient(initialClient.id).then(override => {
+      if (override) setClient(override);
+    });
+  }, [initialClient.id]);
+
+  useEffect(() => {
+    getActivitiesForClient(initialClient.id).then(setActivities);
   }, [initialClient.id]);
 
   const saveOverride = useCallback((updated: Client) => {
-    try {
-      const overrides = JSON.parse(localStorage.getItem("crm-client-overrides") ?? "{}") as Record<string, Client>;
-      overrides[updated.id] = updated;
-      localStorage.setItem("crm-client-overrides", JSON.stringify(overrides));
-    } catch {}
+    upsertClient(updated).catch(err => console.error("[ClientDetail] saveOverride:", err));
     setClient(updated);
   }, []);
 
@@ -377,9 +378,7 @@ export function ClientDetail({ client: initialClient }: Props) {
             </div>
             <div className="px-6 py-4">
               <ActivityTimeline
-                activities={mockActivities
-                  .filter(a => a.clientId === client.id)
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())}
+                activities={activities.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())}
               />
             </div>
           </div>

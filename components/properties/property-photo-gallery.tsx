@@ -2,26 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Upload, X, Star, ZoomIn, ChevronLeft, ChevronRight, Images } from "lucide-react";
-
-const STORAGE_KEY = "crm-property-photos";
-
-function loadPhotos(propertyId: string): string[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const map: Record<string, string[]> = JSON.parse(raw);
-    return map[propertyId] ?? [];
-  } catch { return []; }
-}
-
-function savePhotos(propertyId: string, photos: string[]) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const map: Record<string, string[]> = raw ? JSON.parse(raw) : {};
-    map[propertyId] = photos;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
-  } catch {}
-}
+import { getPhotosForProperty, savePhotosForProperty } from "@/lib/db/photos";
 
 interface Props {
   propertyId: string;
@@ -46,7 +27,7 @@ export function PropertyPhotoGallery({ propertyId, coverImage, onCoverChange }: 
   const hiddenCount = allPhotos.length - PREVIEW_COUNT;
 
   useEffect(() => {
-    setPhotos(loadPhotos(propertyId));
+    getPhotosForProperty(propertyId).then(setPhotos);
   }, [propertyId]);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,7 +45,9 @@ export function PropertyPhotoGallery({ propertyId, coverImage, onCoverChange }: 
         if (loaded === files.length) {
           setPhotos(prev => {
             const updated = [...prev, ...newPhotos];
-            savePhotos(propertyId, updated);
+            savePhotosForProperty(propertyId, updated).catch(err =>
+              console.error("[PhotoGallery] upload save:", err)
+            );
             return updated;
           });
           setUploading(false);
@@ -78,7 +61,9 @@ export function PropertyPhotoGallery({ propertyId, coverImage, onCoverChange }: 
 
   const handleDelete = (photo: string) => {
     const updated = photos.filter(p => p !== photo);
-    savePhotos(propertyId, updated);
+    savePhotosForProperty(propertyId, updated).catch(err =>
+      console.error("[PhotoGallery] delete save:", err)
+    );
     setPhotos(updated);
     if (photo === coverImage) onCoverChange("");
     setLightbox(null);
@@ -88,7 +73,9 @@ export function PropertyPhotoGallery({ propertyId, coverImage, onCoverChange }: 
     onCoverChange(photo);
     if (!photos.includes(photo)) {
       const updated = [photo, ...photos];
-      savePhotos(propertyId, updated);
+      savePhotosForProperty(propertyId, updated).catch(err =>
+        console.error("[PhotoGallery] set cover save:", err)
+      );
       setPhotos(updated);
     }
   };

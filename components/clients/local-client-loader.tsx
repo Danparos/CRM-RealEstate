@@ -3,19 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ClientDetail } from "@/components/clients/client-detail";
+import { getClient } from "@/lib/db/clients";
 import type { Client } from "@/types";
 
 export function LocalClientLoader({ id }: { id: string }) {
   const [client, setClient] = useState<Client | null | undefined>(undefined);
 
   useEffect(() => {
-    try {
-      const extras = JSON.parse(localStorage.getItem("crm-extra-clients") ?? "[]") as Client[];
-      const found  = extras.find(c => c.id === id);
-      setClient(found ?? null);
-    } catch {
-      setClient(null);
-    }
+    getClient(id)
+      .then(found => setClient(found ?? null))
+      .catch(() => setClient(null));
   }, [id]);
 
   if (client === undefined) {

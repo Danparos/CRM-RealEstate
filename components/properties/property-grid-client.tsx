@@ -4,10 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Waves, Droplets, Eye, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { getAllProperties } from "@/lib/db/properties";
 import type { Property, PropertyStatus, PropertyType } from "@/types";
-
-const EXTRA_KEY    = "crm-extra-properties";
-const OVERRIDE_KEY = "crm-property-overrides";
 
 const STATUS_CONFIG: Record<PropertyStatus, { label: string; dotClass: string; badgeClass: string }> = {
   available:      { label: "Available",      dotClass: "bg-emerald-400", badgeClass: "bg-emerald-50  text-emerald-700  border-emerald-200"  },
@@ -30,7 +28,7 @@ const TYPE_LABELS: Record<PropertyType, string> = {
 };
 
 interface Props {
-  serverProperties: Property[];
+  serverProperties?: Property[];
   statusFilter?: PropertyStatus;
 }
 
@@ -90,22 +88,29 @@ function PropertyCard({ property }: { property: Property }) {
   );
 }
 
-export function PropertyGridClient({ serverProperties, statusFilter }: Props) {
+export function PropertyGridClient({ serverProperties = [], statusFilter }: Props) {
   const [allProperties, setAllProperties] = useState<Property[]>(serverProperties);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const extras    = JSON.parse(localStorage.getItem(EXTRA_KEY)    ?? "[]") as Property[];
-      const overrides = JSON.parse(localStorage.getItem(OVERRIDE_KEY) ?? "{}") as Record<string, Property>;
-      // Merge: apply overrides to server props, then append extras
-      const merged = [...serverProperties.map(p => overrides[p.id] ?? p), ...extras];
-      setAllProperties(merged);
-    } catch {}
-  }, [serverProperties]);
+    getAllProperties()
+      .then(setAllProperties)
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = statusFilter
     ? allProperties.filter(p => p.status === statusFilter)
     : allProperties;
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-64 rounded-xl bg-stone-100 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
 
   if (filtered.length === 0) {
     return <div className="py-16 text-center text-stone-400 text-sm">No properties match this filter.</div>;

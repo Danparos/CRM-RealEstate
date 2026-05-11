@@ -3,23 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PropertyDetail } from "@/components/properties/property-detail";
+import { getProperty } from "@/lib/db/properties";
 import type { Property } from "@/types";
-
-const EXTRA_KEY     = "crm-extra-properties";
-const OVERRIDE_KEY  = "crm-property-overrides";
 
 export function LocalPropertyLoader({ id }: { id: string }) {
   const [property, setProperty] = useState<Property | null | undefined>(undefined);
 
   useEffect(() => {
-    try {
-      const extras    = JSON.parse(localStorage.getItem(EXTRA_KEY)    ?? "[]") as Property[];
-      const overrides = JSON.parse(localStorage.getItem(OVERRIDE_KEY) ?? "{}") as Record<string, Property>;
-      const found     = overrides[id] ?? extras.find(p => p.id === id) ?? null;
-      setProperty(found);
-    } catch {
-      setProperty(null);
-    }
+    getProperty(id)
+      .then(found => setProperty(found ?? null))
+      .catch(() => setProperty(null));
   }, [id]);
 
   if (property === undefined) {

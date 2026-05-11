@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import type { Client, ClientClass, PipelineStage, PriceGroup, Salutation } from "@/types";
+import { upsertClient, generateClientId } from "@/lib/db/clients";
 
 interface AddClientFormProps {
   onSuccess: (id: string) => void;
@@ -225,39 +226,41 @@ export function AddClientForm({ onSuccess, onCancel }: AddClientFormProps) {
     return parts.join(" · ");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setBusy(true);
-    const now = new Date().toISOString();
-    const client: Client = {
-      id: `local-${Date.now()}`,
-      salutation: (form.salutation as Salutation) || undefined,
-      firstName: form.firstName.trim(), lastName: form.lastName.trim(),
-      email: form.email.trim() || undefined, phone: form.phone.trim() || undefined,
-      nationality: form.nationality || undefined, language: form.language || undefined,
-      clientClass: form.clientClass,
-      priceGroup: (form.priceGroup as PriceGroup) || undefined,
-      budgetMin: form.budgetMin ? Number(form.budgetMin) : undefined,
-      budgetMax: form.budgetMax ? Number(form.budgetMax) : undefined,
-      stage: form.stage,
-      primaryAgent: form.primaryAgent || undefined,
-      propertyInterest: buildPropertyInterest() || undefined,
-      propertyLocations: locations.length ? locations : undefined,
-      propertyTypes: propertyTypes.length ? propertyTypes : undefined,
-      propertyBedroomsMin: bedroomsMin || undefined,
-      propertyBedroomsMax: bedroomsMax || undefined,
-      propertyPool: pool !== "any" ? pool : undefined,
-      propertyViews: views.length ? views : undefined,
-      lastActivityAt: now, lastActivityNote: "Client created",
-      stageEnteredAt: now, createdAt: now, updatedAt: now,
-    };
+
     try {
-      const existing = JSON.parse(localStorage.getItem("crm-extra-clients") ?? "[]") as Client[];
-      localStorage.setItem("crm-extra-clients", JSON.stringify([...existing, client]));
-    } catch {}
-    setBusy(false);
-    onSuccess(client.id);
+      const now = new Date().toISOString();
+      const id  = await generateClientId();
+      const client: Client = {
+        id,
+        salutation: (form.salutation as Salutation) || undefined,
+        firstName: form.firstName.trim(), lastName: form.lastName.trim(),
+        email: form.email.trim() || undefined, phone: form.phone.trim() || undefined,
+        nationality: form.nationality || undefined, language: form.language || undefined,
+        clientClass: form.clientClass,
+        priceGroup: (form.priceGroup as PriceGroup) || undefined,
+        budgetMin: form.budgetMin ? Number(form.budgetMin) : undefined,
+        budgetMax: form.budgetMax ? Number(form.budgetMax) : undefined,
+        stage: form.stage,
+        primaryAgent: form.primaryAgent || undefined,
+        propertyInterest: buildPropertyInterest() || undefined,
+        propertyLocations: locations.length ? locations : undefined,
+        propertyTypes: propertyTypes.length ? propertyTypes : undefined,
+        propertyBedroomsMin: bedroomsMin || undefined,
+        propertyBedroomsMax: bedroomsMax || undefined,
+        propertyPool: pool !== "any" ? pool : undefined,
+        propertyViews: views.length ? views : undefined,
+        lastActivityAt: now, lastActivityNote: "Client created",
+        stageEnteredAt: now, createdAt: now, updatedAt: now,
+      };
+      await upsertClient(client);
+      onSuccess(client.id);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

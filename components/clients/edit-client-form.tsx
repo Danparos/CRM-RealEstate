@@ -236,12 +236,7 @@ export function EditClientForm({ client, onSuccess, onCancel }: EditClientFormPr
       updatedAt: new Date().toISOString(),
     };
 
-    try {
-      const overrides = JSON.parse(localStorage.getItem("crm-client-overrides") ?? "{}") as Record<string, Client>;
-      overrides[updated.id] = updated;
-      localStorage.setItem("crm-client-overrides", JSON.stringify(overrides));
-    } catch {}
-
+    // Persistence is handled by the parent component (ClientDetail → upsertClient)
     setBusy(false);
     onSuccess(updated);
   };
