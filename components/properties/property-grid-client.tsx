@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { Waves, Droplets, Eye, ArrowRight } from "lucide-react";
+import { Waves, Droplets, Eye, ArrowRight, SlidersHorizontal, X } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { getAllProperties } from "@/lib/db/properties";
 import type { Property, PropertyStatus, PropertyType } from "@/types";
@@ -26,6 +26,31 @@ const TYPE_LABELS: Record<PropertyType, string> = {
   cycladic: "Cycladic", maisonette: "Maisonette", studio: "Studio",
   land: "Land", commercial: "Commercial", hotel: "Hotel",
 };
+
+interface Filters {
+  priceMin: string;
+  priceMax: string;
+  location: string;
+  bedroomsMin: string;
+  plotMin: string;
+  plotMax: string;
+  pool: boolean;
+  seaView: boolean;
+  seafront: boolean;
+}
+
+const EMPTY_FILTERS: Filters = {
+  priceMin: "", priceMax: "", location: "",
+  bedroomsMin: "", plotMin: "", plotMax: "",
+  pool: false, seaView: false, seafront: false,
+};
+
+function activeFilterCount(f: Filters) {
+  return [
+    f.priceMin, f.priceMax, f.location, f.bedroomsMin, f.plotMin, f.plotMax,
+    f.pool, f.seaView, f.seafront,
+  ].filter(Boolean).length;
+}
 
 interface Props {
   serverProperties?: Property[];
@@ -72,7 +97,7 @@ function PropertyCard({ property }: { property: Property }) {
             </span>
             <span className="text-stone-300">·</span>
             <span className="flex items-center gap-1">
-              <svg className="h-3.5 w-3.5 text-stone-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>
+              <svg className="h-3.5 w-3.5 text-stone-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0118 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>
               <span className="font-medium text-stone-700">{property.bathrooms}</span><span>bath</span>
             </span>
             <span className="text-stone-300">·</span>
@@ -88,19 +113,47 @@ function PropertyCard({ property }: { property: Property }) {
   );
 }
 
+const inp = "h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-800 outline-none focus:border-[#B8960C] focus:ring-2 focus:ring-[#B8960C]/20 transition-all";
+const sel = inp + " appearance-none cursor-pointer";
+
 export function PropertyGridClient({ serverProperties = [], statusFilter }: Props) {
   const [allProperties, setAllProperties] = useState<Property[]>(serverProperties);
   const [loading, setLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
 
   useEffect(() => {
-    getAllProperties()
-      .then(setAllProperties)
-      .finally(() => setLoading(false));
+    getAllProperties().then(setAllProperties).finally(() => setLoading(false));
   }, []);
 
-  const filtered = statusFilter
-    ? allProperties.filter(p => p.status === statusFilter)
-    : allProperties;
+  const areas = useMemo(() =>
+    Array.from(new Set(allProperties.map(p => p.area).filter(Boolean))).sort(),
+    [allProperties]
+  );
+
+  const setF = <K extends keyof Filters>(k: K, v: Filters[K]) =>
+    setFilters(f => ({ ...f, [k]: v }));
+
+  const clearFilters = () => setFilters(EMPTY_FILTERS);
+  const count = activeFilterCount(filters);
+
+  const filtered = useMemo(() => {
+    let list = statusFilter
+      ? allProperties.filter(p => p.status === statusFilter)
+      : allProperties;
+
+    if (filters.priceMin)    list = list.filter(p => p.askingPrice >= Number(filters.priceMin));
+    if (filters.priceMax)    list = list.filter(p => p.askingPrice <= Number(filters.priceMax));
+    if (filters.location)    list = list.filter(p => p.area === filters.location);
+    if (filters.bedroomsMin) list = list.filter(p => p.bedrooms >= Number(filters.bedroomsMin));
+    if (filters.plotMin)     list = list.filter(p => (p.plotArea ?? 0) >= Number(filters.plotMin));
+    if (filters.plotMax)     list = list.filter(p => (p.plotArea ?? 0) <= Number(filters.plotMax));
+    if (filters.pool)        list = list.filter(p => p.pool);
+    if (filters.seaView)     list = list.filter(p => p.seaView);
+    if (filters.seafront)    list = list.filter(p => p.seafront);
+
+    return list;
+  }, [allProperties, statusFilter, filters]);
 
   if (loading) {
     return (
@@ -112,13 +165,116 @@ export function PropertyGridClient({ serverProperties = [], statusFilter }: Prop
     );
   }
 
-  if (filtered.length === 0) {
-    return <div className="py-16 text-center text-stone-400 text-sm">No properties match this filter.</div>;
-  }
-
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      {filtered.map(property => <PropertyCard key={property.id} property={property} />)}
+    <div className="space-y-4">
+
+      {/* Filter toggle bar */}
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={() => setShowFilters(f => !f)}
+          className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg border text-sm font-medium transition-colors ${
+            showFilters || count > 0
+              ? "bg-[#B8960C] border-[#B8960C] text-white"
+              : "border-stone-200 text-stone-600 hover:border-[#B8960C] hover:text-[#B8960C]"
+          }`}
+        >
+          <SlidersHorizontal size={14} strokeWidth={2} />
+          Filters
+          {count > 0 && (
+            <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-white text-[#B8960C] text-[10px] font-bold">
+              {count}
+            </span>
+          )}
+        </button>
+        <span className="text-sm text-stone-400">{filtered.length} {filtered.length === 1 ? "property" : "properties"}</span>
+      </div>
+
+      {/* Filter panel */}
+      {showFilters && (
+        <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-5 space-y-5">
+
+          {/* Row 1: Price + Location + Bedrooms */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-1.5">Price Min (€)</label>
+              <input type="number" placeholder="e.g. 500000" value={filters.priceMin}
+                onChange={e => setF("priceMin", e.target.value)} className={inp} />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-1.5">Price Max (€)</label>
+              <input type="number" placeholder="e.g. 5000000" value={filters.priceMax}
+                onChange={e => setF("priceMax", e.target.value)} className={inp} />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-1.5">Location</label>
+              <select value={filters.location} onChange={e => setF("location", e.target.value)} className={sel}>
+                <option value="">All areas</option>
+                {areas.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-1.5">Min Bedrooms</label>
+              <select value={filters.bedroomsMin} onChange={e => setF("bedroomsMin", e.target.value)} className={sel}>
+                <option value="">Any</option>
+                {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}+</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Row 2: Plot size + Features */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-1.5">Plot Min (m²)</label>
+              <input type="number" placeholder="e.g. 500" value={filters.plotMin}
+                onChange={e => setF("plotMin", e.target.value)} className={inp} />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-1.5">Plot Max (m²)</label>
+              <input type="number" placeholder="e.g. 5000" value={filters.plotMax}
+                onChange={e => setF("plotMax", e.target.value)} className={inp} />
+            </div>
+            <div className="lg:col-span-2">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-1.5">Features</label>
+              <div className="flex items-center gap-4 flex-wrap pt-1">
+                {([
+                  { key: "seafront", label: "Seafront" },
+                  { key: "seaView",  label: "Sea View"  },
+                  { key: "pool",     label: "Pool"      },
+                ] as const).map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer select-none">
+                    <button type="button" onClick={() => setF(key, !filters[key])}
+                      className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
+                        filters[key] ? "bg-[#B8960C] border-[#B8960C]" : "border-stone-300 bg-white"
+                      }`}>
+                      {filters[key] && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                    </button>
+                    <span className="text-sm text-stone-700">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Clear */}
+          {count > 0 && (
+            <div className="flex justify-end border-t border-stone-100 pt-3">
+              <button onClick={clearFilters}
+                className="inline-flex items-center gap-1.5 text-sm text-stone-400 hover:text-red-500 transition-colors">
+                <X size={13} strokeWidth={2} /> Clear all filters
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Grid */}
+      {filtered.length === 0 ? (
+        <div className="py-16 text-center text-stone-400 text-sm">No properties match these filters.</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filtered.map(property => <PropertyCard key={property.id} property={property} />)}
+        </div>
+      )}
     </div>
   );
 }
