@@ -413,19 +413,28 @@ export default function TasksPage() {
   const [agentFilter, setAgentFilter] = useState<string>("");
 
   const visibleTasks = agentFilter
-    ? tasks.filter(t => t.assignedTo === agentFilter)
+    ? tasks.filter(t => t.assignedTo?.trim().toLowerCase() === agentFilter.trim().toLowerCase())
     : tasks;
 
   const tasksByStatus = (status: Task["status"]) => visibleTasks.filter(t => t.status === status);
 
+  // All agent names: from agents table + any assignedTo values in tasks not already covered
+  const allAgentNames = (() => {
+    const fromTable = agents.filter(a => a.active !== false).map(a => a.name);
+    const fromTasks = tasks.map(t => t.assignedTo).filter((n): n is string => !!n);
+    const merged = Array.from(new Set([...fromTable, ...fromTasks])).sort();
+    return merged;
+  })();
+
   // For the "All Agents" view: group tasks by agent within a column
-  // Always show all active agents (even with 0 tasks), unassigned at end if any
   function getAgentGroups(status: Task["status"]) {
     const statusTasks = tasks.filter(t => t.status === status);
-    const activeAgents = agents.filter(a => a.active !== false).map(a => a.name).sort();
-    const unassigned = statusTasks.filter(t => !t.assignedTo || !activeAgents.includes(t.assignedTo));
+    const unassigned = statusTasks.filter(t => !t.assignedTo);
     return [
-      ...activeAgents.map(name => ({ name, tasks: statusTasks.filter(t => t.assignedTo === name) })),
+      ...allAgentNames.map(name => ({
+        name,
+        tasks: statusTasks.filter(t => t.assignedTo?.trim().toLowerCase() === name.trim().toLowerCase()),
+      })),
       ...(unassigned.length > 0 ? [{ name: null as string | null, tasks: unassigned }] : []),
     ];
   }
@@ -461,8 +470,8 @@ export default function TasksPage() {
                 className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none focus:border-[#B8960C] focus:ring-2 focus:ring-[#B8960C]/20 transition-all appearance-none cursor-pointer"
               >
                 <option value="">All Agents</option>
-                {agents.filter(a => a.active !== false).map(a => (
-                  <option key={a.id} value={a.name}>{a.name}</option>
+                {allAgentNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
                 ))}
               </select>
             <button
