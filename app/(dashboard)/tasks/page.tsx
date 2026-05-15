@@ -410,7 +410,13 @@ export default function TasksPage() {
     await upsertTask(updated);
   }
 
-  const tasksByStatus = (status: Task["status"]) => tasks.filter(t => t.status === status);
+  const [agentFilter, setAgentFilter] = useState<string>("");
+
+  const visibleTasks = agentFilter
+    ? tasks.filter(t => t.assignedTo === agentFilter)
+    : tasks;
+
+  const tasksByStatus = (status: Task["status"]) => visibleTasks.filter(t => t.status === status);
 
   const totalCount   = tasks.length;
   const doneCount    = tasks.filter(t => t.status === "done").length;
@@ -436,6 +442,17 @@ export default function TasksPage() {
                 </p>
               </div>
             </div>
+            <div className="flex items-center gap-3">
+              <select
+                value={agentFilter}
+                onChange={e => setAgentFilter(e.target.value)}
+                className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none focus:border-[#B8960C] focus:ring-2 focus:ring-[#B8960C]/20 transition-all appearance-none cursor-pointer"
+              >
+                <option value="">All Agents</option>
+                {agents.filter(a => a.active !== false).map(a => (
+                  <option key={a.id} value={a.name}>{a.name}</option>
+                ))}
+              </select>
             <button
               onClick={() => setModal({ open: true, task: null })}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#B8960C] text-white text-sm font-semibold shadow-sm hover:bg-[#a07c0a] transition-colors"
@@ -443,6 +460,7 @@ export default function TasksPage() {
               <Plus size={15} strokeWidth={2.5} />
               Add Task
             </button>
+            </div>
           </div>
         </div>
       </div>
