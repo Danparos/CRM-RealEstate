@@ -444,61 +444,48 @@ export default function TasksPage() {
   const overdueCount = tasks.filter(t => isOverdue(t.dueDate) && t.status !== "done").length;
 
   return (
-    <div className="min-h-screen bg-[#FAF9F7]">
+    <div className="space-y-6">
       {/* Page Header */}
-      <div className="border-b border-warm-200 bg-white">
-        <div className="max-w-[1400px] mx-auto px-6 py-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#B8960C]/10">
-                <CheckSquare size={18} strokeWidth={1.75} className="text-[#B8960C]" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-stone-900 tracking-tight">Tasks</h1>
-                <p className="text-[12px] text-stone-400 mt-0.5">
-                  {totalCount} total · {doneCount} done
-                  {overdueCount > 0 && (
-                    <span className="ml-2 text-red-500 font-medium">{overdueCount} overdue</span>
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <select
-                value={agentFilter}
-                onChange={e => setAgentFilter(e.target.value)}
-                className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none focus:border-[#B8960C] focus:ring-2 focus:ring-[#B8960C]/20 transition-all appearance-none cursor-pointer"
-              >
-                <option value="">All Agents</option>
-                {allAgentNames.map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
-            <button
-              onClick={() => setModal({ open: true, task: null })}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#B8960C] text-white text-sm font-semibold shadow-sm hover:bg-[#a07c0a] transition-colors"
-            >
-              <Plus size={15} strokeWidth={2.5} />
-              Add Task
-            </button>
-            </div>
-          </div>
+      <div className="flex items-end justify-between gap-4 pb-2 border-b border-stone-100">
+        <div>
+          <h1 className="font-serif text-[36px] font-semibold leading-none tracking-wide text-stone-900">Tasks</h1>
+          <p className="mt-2 text-[13px] uppercase tracking-[0.2em] text-stone-400 font-medium">
+            {totalCount} total · {doneCount} done
+            {overdueCount > 0 && <span className="ml-3 text-red-500 normal-case tracking-normal">· {overdueCount} overdue</span>}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <select
+            value={agentFilter}
+            onChange={e => setAgentFilter(e.target.value)}
+            className="h-10 rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none focus:border-[#B8960C] focus:ring-2 focus:ring-[#B8960C]/20 transition-all appearance-none cursor-pointer"
+          >
+            <option value="">All Agents</option>
+            {allAgentNames.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => setModal({ open: true, task: null })}
+            className="inline-flex items-center gap-2 h-10 px-5 text-sm font-semibold rounded-lg bg-[#B8960C] text-white shadow-sm hover:bg-[#9e7f0a] transition-colors tracking-wide"
+          >
+            <Plus size={15} strokeWidth={2} />
+            Add Task
+          </button>
         </div>
       </div>
 
       {/* Error banner */}
       {saveError && (
-        <div className="max-w-[1400px] mx-auto px-6 pt-4">
-          <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
-            <AlertCircle size={15} className="shrink-0" />
-            <span className="font-medium">Error saving task:</span> {saveError}
-            <button onClick={() => setSaveError(null)} className="ml-auto text-red-400 hover:text-red-600"><X size={14} /></button>
-          </div>
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+          <AlertCircle size={15} className="shrink-0" />
+          <span className="font-medium">Error saving task:</span> {saveError}
+          <button onClick={() => setSaveError(null)} className="ml-auto text-red-400 hover:text-red-600"><X size={14} /></button>
         </div>
       )}
 
       {/* Kanban Board */}
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
+      <div>
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="h-7 w-7 rounded-full border-2 border-[#B8960C] border-t-transparent animate-spin" />

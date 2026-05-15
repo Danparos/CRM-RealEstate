@@ -31,7 +31,8 @@ export function Header({ user, onMenuToggle }: HeaderProps) {
   const hideTitleBar =
     pathname === "/pipeline"   || pathname.startsWith("/pipeline/")   ||
     pathname === "/clients"    || pathname.startsWith("/clients/")    ||
-    pathname === "/properties" || pathname.startsWith("/properties/");
+    pathname === "/properties" || pathname.startsWith("/properties/") ||
+    pathname === "/tasks"      || pathname.startsWith("/tasks/");
 
   return (
     <header
