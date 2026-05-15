@@ -5,7 +5,8 @@ import { CheckSquare, Plus, Calendar, User, Link2, Trash2, ChevronRight, AlertCi
 import { getAllTasks, upsertTask, deleteTask } from "@/lib/db/tasks";
 import { getAllClients } from "@/lib/db/clients";
 import { getAllProperties } from "@/lib/db/properties";
-import type { Task, Client, Property } from "@/types";
+import { getAllAgents } from "@/lib/db/agents";
+import type { Task, Client, Property, Agent } from "@/types";
 import { cn } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -177,11 +178,12 @@ interface TaskModalProps {
   task: Task | null;
   clients: Client[];
   properties: Property[];
+  agents: Agent[];
   onSave: (t: Task) => void;
   onClose: () => void;
 }
 
-function TaskModal({ task, clients, properties, onSave, onClose }: TaskModalProps) {
+function TaskModal({ task, clients, properties, agents, onSave, onClose }: TaskModalProps) {
   const [form, setForm] = useState<Omit<Task, "id">>(() =>
     task ? {
       title:       task.title,
@@ -220,7 +222,7 @@ function TaskModal({ task, clients, properties, onSave, onClose }: TaskModalProp
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
 
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-warm-200 overflow-hidden">
+      <div className="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-warm-200 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-warm-100 bg-stone-50/60">
           <div className="flex items-center gap-2">
@@ -298,12 +300,16 @@ function TaskModal({ task, clients, properties, onSave, onClose }: TaskModalProp
             </div>
             <div>
               <label className={labelCls}>Assigned To</label>
-              <input
+              <select
                 className={inputCls}
-                placeholder="Agent name..."
                 value={form.assignedTo ?? ""}
                 onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}
-              />
+              >
+                <option value="">Unassigned</option>
+                {agents.filter(a => a.active !== false).map(a => (
+                  <option key={a.id} value={a.name}>{a.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -365,15 +371,17 @@ export default function TasksPage() {
   const [tasks,      setTasks]      = useState<Task[]>([]);
   const [clients,    setClients]    = useState<Client[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [agents,     setAgents]     = useState<Agent[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [modal,      setModal]      = useState<{ open: boolean; task: Task | null }>({ open: false, task: null });
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [t, c, p] = await Promise.all([getAllTasks(), getAllClients(), getAllProperties()]);
+    const [t, c, p, a] = await Promise.all([getAllTasks(), getAllClients(), getAllProperties(), getAllAgents()]);
     setTasks(t);
     setClients(c);
     setProperties(p);
+    setAgents(a);
     setLoading(false);
   }, []);
 
@@ -508,6 +516,7 @@ export default function TasksPage() {
           task={modal.task}
           clients={clients}
           properties={properties}
+          agents={agents}
           onSave={handleSave}
           onClose={() => setModal({ open: false, task: null })}
         />
