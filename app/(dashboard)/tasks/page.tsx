@@ -418,6 +418,24 @@ export default function TasksPage() {
 
   const tasksByStatus = (status: Task["status"]) => visibleTasks.filter(t => t.status === status);
 
+  // For the "All Agents" view: group tasks by agent within a column
+  function getAgentGroups(status: Task["status"]) {
+    const statusTasks = tasks.filter(t => t.status === status);
+    const seen = new Set<string>();
+    const order: (string | null)[] = [];
+    for (const t of statusTasks) {
+      const key = t.assignedTo ?? "";
+      if (!seen.has(key)) { seen.add(key); order.push(t.assignedTo ?? null); }
+    }
+    // Named agents first (sorted), unassigned last
+    const named = order.filter((n): n is string => n !== null).sort();
+    const hasUnassigned = order.includes(null);
+    return [
+      ...named.map(name => ({ name, tasks: statusTasks.filter(t => t.assignedTo === name) })),
+      ...(hasUnassigned ? [{ name: null, tasks: statusTasks.filter(t => !t.assignedTo) }] : []),
+    ];
+  }
+
   const totalCount   = tasks.length;
   const doneCount    = tasks.filter(t => t.status === "done").length;
   const overdueCount = tasks.filter(t => isOverdue(t.dueDate) && t.status !== "done").length;
@@ -486,6 +504,8 @@ export default function TasksPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {COLUMNS.map(({ status, label, bg, dot }) => {
               const col = tasksByStatus(status);
+              const groups = agentFilter ? null : getAgentGroups(status);
+              const totalInCol = agentFilter ? col.length : tasks.filter(t => t.status === status).length;
               return (
                 <div key={status} className={cn("rounded-2xl p-4", bg, "border border-warm-200/60 min-h-[200px]")}>
                   {/* Column Header */}
@@ -495,41 +515,77 @@ export default function TasksPage() {
                       <h2 className="text-sm font-semibold text-stone-700 tracking-wide">{label}</h2>
                     </div>
                     <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white border border-warm-200 text-[11px] font-semibold text-stone-500 px-1.5">
-                      {col.length}
+                      {totalInCol}
                     </span>
                   </div>
 
-                  {/* Cards */}
-                  <div className="flex flex-col gap-3">
-                    {col.length === 0 ? (
+                  {/* Cards — grouped by agent when no filter active */}
+                  {groups ? (
+                    groups.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-10 text-center">
                         <p className="text-[11px] text-stone-300 font-medium">No tasks here</p>
                         {status === "todo" && (
-                          <button
-                            onClick={() => setModal({ open: true, task: null })}
-                            className="mt-2 text-[11px] text-[#B8960C] hover:underline"
-                          >
-                            + Add one
-                          </button>
+                          <button onClick={() => setModal({ open: true, task: null })} className="mt-2 text-[11px] text-[#B8960C] hover:underline">+ Add one</button>
                         )}
                       </div>
                     ) : (
-                      col.map(task => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          clients={clients}
-                          properties={properties}
-                          onEdit={t => setModal({ open: true, task: t })}
-                          onDelete={handleDelete}
-                          onMove={handleMove}
-                        />
-                      ))
-                    )}
-                  </div>
+                      <div className="flex flex-col gap-4">
+                        {groups.map(({ name, tasks: groupTasks }) => (
+                          <div key={name ?? "__unassigned__"}>
+                            {/* Agent sub-header */}
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#B8960C]/10 shrink-0">
+                                <User size={10} strokeWidth={2} className="text-[#B8960C]" />
+                              </div>
+                              <span className="text-[11px] font-semibold text-stone-500 tracking-wide truncate">
+                                {name ?? "Unassigned"}
+                              </span>
+                              <span className="ml-auto text-[10px] font-semibold text-stone-400 shrink-0">{groupTasks.length}</span>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              {groupTasks.map(task => (
+                                <TaskCard
+                                  key={task.id}
+                                  task={task}
+                                  clients={clients}
+                                  properties={properties}
+                                  onEdit={t => setModal({ open: true, task: t })}
+                                  onDelete={handleDelete}
+                                  onMove={handleMove}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {col.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 text-center">
+                          <p className="text-[11px] text-stone-300 font-medium">No tasks here</p>
+                          {status === "todo" && (
+                            <button onClick={() => setModal({ open: true, task: null })} className="mt-2 text-[11px] text-[#B8960C] hover:underline">+ Add one</button>
+                          )}
+                        </div>
+                      ) : (
+                        col.map(task => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            clients={clients}
+                            properties={properties}
+                            onEdit={t => setModal({ open: true, task: t })}
+                            onDelete={handleDelete}
+                            onMove={handleMove}
+                          />
+                        ))
+                      )}
+                    </div>
+                  )}
 
                   {/* Add at bottom of To Do / In Progress */}
-                  {status !== "done" && col.length > 0 && (
+                  {status !== "done" && totalInCol > 0 && (
                     <button
                       onClick={() => setModal({ open: true, task: null })}
                       className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-warm-300 py-2 text-[11px] text-stone-400 hover:border-[#B8960C]/40 hover:text-[#B8960C] transition-colors"
