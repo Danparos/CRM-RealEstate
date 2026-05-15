@@ -140,3 +140,18 @@ alter table properties     disable row level security;
 alter table activities     disable row level security;
 alter table property_photos disable row level security;
 alter table custom_areas   disable row level security;
+
+-- TASKS
+create table if not exists tasks (
+  id          text primary key,
+  title       text not null,
+  description text,
+  due_date    date,
+  assigned_to text,
+  client_id   text references clients(id) on delete set null,
+  property_id text references properties(id) on delete set null,
+  status      text not null default 'todo',
+  priority    text not null default 'medium',
+  created_at  timestamptz default now()
+);
+alter table tasks disable row level security;

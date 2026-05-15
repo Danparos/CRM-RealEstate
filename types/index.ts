@@ -93,6 +93,19 @@ export type ContractType = "exclusive" | "open";
 export type PropertyUsage = "residential" | "commercial";
 export type MarketingMethod = "sale" | "rent" | "sale_or_rent";
 
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  dueDate?: string;
+  assignedTo?: string;
+  clientId?: string;
+  propertyId?: string;
+  status: "todo" | "in_progress" | "done";
+  priority: "low" | "medium" | "high";
+  createdAt?: string;
+}
+
 export interface Property {
   id: string;
   reference: string;

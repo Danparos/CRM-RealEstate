@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, Building2, GitMerge, CalendarDays, BarChart3, ShieldCheck, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Building2, GitMerge, CalendarDays, BarChart3, ShieldCheck, CheckSquare, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { label: "Properties", icon: Building2,        href: "/properties" },
   { label: "Calendar",   icon: CalendarDays,     href: "/calendar"   },
   { label: "Reports",    icon: BarChart3,        href: "/reports"    },
+  { label: "Tasks",      icon: CheckSquare,      href: "/tasks"      },
   { label: "Admin",      icon: ShieldCheck,      href: "/admin"      },
 ];
 

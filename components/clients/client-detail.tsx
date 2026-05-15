@@ -21,6 +21,11 @@ const ClientDocuments = dynamic(
   { ssr: false, loading: () => <div className="h-24 bg-white rounded-xl border border-stone-200 animate-pulse" /> }
 );
 
+const PropertyMatches = dynamic(
+  () => import("@/components/clients/property-matches").then(m => ({ default: m.PropertyMatches })),
+  { ssr: false, loading: () => <div className="h-48 bg-white rounded-xl border border-stone-200 animate-pulse" /> }
+);
+
 const SendPropertyModal = dynamic(
   () => import("@/components/clients/send-property-modal").then(m => ({ default: m.SendPropertyModal })),
   { ssr: false }
@@ -367,6 +372,9 @@ export function ClientDetail({ client: initialClient }: Props) {
               </Row>
             )}
           </Section>
+
+          {/* Matching Properties */}
+          <PropertyMatches client={client} />
 
           {/* Documents */}
           <ClientDocuments clientId={client.id} />
