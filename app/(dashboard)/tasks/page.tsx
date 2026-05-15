@@ -419,20 +419,14 @@ export default function TasksPage() {
   const tasksByStatus = (status: Task["status"]) => visibleTasks.filter(t => t.status === status);
 
   // For the "All Agents" view: group tasks by agent within a column
+  // Always show all active agents (even with 0 tasks), unassigned at end if any
   function getAgentGroups(status: Task["status"]) {
     const statusTasks = tasks.filter(t => t.status === status);
-    const seen = new Set<string>();
-    const order: (string | null)[] = [];
-    for (const t of statusTasks) {
-      const key = t.assignedTo ?? "";
-      if (!seen.has(key)) { seen.add(key); order.push(t.assignedTo ?? null); }
-    }
-    // Named agents first (sorted), unassigned last
-    const named = order.filter((n): n is string => n !== null).sort();
-    const hasUnassigned = order.includes(null);
+    const activeAgents = agents.filter(a => a.active !== false).map(a => a.name).sort();
+    const unassigned = statusTasks.filter(t => !t.assignedTo || !activeAgents.includes(t.assignedTo));
     return [
-      ...named.map(name => ({ name, tasks: statusTasks.filter(t => t.assignedTo === name) })),
-      ...(hasUnassigned ? [{ name: null, tasks: statusTasks.filter(t => !t.assignedTo) }] : []),
+      ...activeAgents.map(name => ({ name, tasks: statusTasks.filter(t => t.assignedTo === name) })),
+      ...(unassigned.length > 0 ? [{ name: null as string | null, tasks: unassigned }] : []),
     ];
   }
 
@@ -521,27 +515,22 @@ export default function TasksPage() {
 
                   {/* Cards — grouped by agent when no filter active */}
                   {groups ? (
-                    groups.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-10 text-center">
-                        <p className="text-[11px] text-stone-300 font-medium">No tasks here</p>
-                        {status === "todo" && (
-                          <button onClick={() => setModal({ open: true, task: null })} className="mt-2 text-[11px] text-[#B8960C] hover:underline">+ Add one</button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-4">
-                        {groups.map(({ name, tasks: groupTasks }) => (
-                          <div key={name ?? "__unassigned__"}>
-                            {/* Agent sub-header */}
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#B8960C]/10 shrink-0">
-                                <User size={10} strokeWidth={2} className="text-[#B8960C]" />
-                              </div>
-                              <span className="text-[11px] font-semibold text-stone-500 tracking-wide truncate">
-                                {name ?? "Unassigned"}
-                              </span>
-                              <span className="ml-auto text-[10px] font-semibold text-stone-400 shrink-0">{groupTasks.length}</span>
+                    <div className="flex flex-col gap-4">
+                      {groups.map(({ name, tasks: groupTasks }) => (
+                        <div key={name ?? "__unassigned__"}>
+                          {/* Agent sub-header */}
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#B8960C]/10 shrink-0">
+                              <User size={10} strokeWidth={2} className="text-[#B8960C]" />
                             </div>
+                            <span className="text-[11px] font-semibold text-stone-500 tracking-wide truncate">
+                              {name ?? "Unassigned"}
+                            </span>
+                            <span className="ml-auto text-[10px] font-semibold text-stone-400 shrink-0">{groupTasks.length}</span>
+                          </div>
+                          {groupTasks.length === 0 ? (
+                            <p className="text-[10px] text-stone-300 pl-6 pb-1">No tasks</p>
+                          ) : (
                             <div className="flex flex-col gap-2">
                               {groupTasks.map(task => (
                                 <TaskCard
@@ -555,10 +544,10 @@ export default function TasksPage() {
                                 />
                               ))}
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <div className="flex flex-col gap-3">
                       {col.length === 0 ? (
