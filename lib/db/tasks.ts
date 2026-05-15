@@ -50,14 +50,10 @@ export async function getAllTasks(): Promise<Task[]> {
 }
 
 export async function upsertTask(t: Task): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from("tasks")
-      .upsert(toRow(t), { onConflict: "id" });
-    if (error) console.error("[db/tasks] upsertTask:", error.message);
-  } catch (err) {
-    console.error("[db/tasks] upsertTask unexpected:", err);
-  }
+  const { error } = await supabase
+    .from("tasks")
+    .upsert(toRow(t), { onConflict: "id" });
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteTask(id: string): Promise<void> {

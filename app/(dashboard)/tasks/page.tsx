@@ -373,6 +373,7 @@ export default function TasksPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [agents,     setAgents]     = useState<Agent[]>([]);
   const [loading,    setLoading]    = useState(true);
+  const [saveError,  setSaveError]  = useState<string | null>(null);
   const [modal,      setModal]      = useState<{ open: boolean; task: Task | null }>({ open: false, task: null });
 
   const load = useCallback(async () => {
@@ -388,9 +389,14 @@ export default function TasksPage() {
   useEffect(() => { load(); }, [load]);
 
   async function handleSave(task: Task) {
-    await upsertTask(task);
-    setModal({ open: false, task: null });
-    await load();
+    try {
+      setSaveError(null);
+      await upsertTask(task);
+      setModal({ open: false, task: null });
+      await load();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save task");
+    }
   }
 
   async function handleDelete(id: string) {
@@ -440,6 +446,17 @@ export default function TasksPage() {
           </div>
         </div>
       </div>
+
+      {/* Error banner */}
+      {saveError && (
+        <div className="max-w-[1400px] mx-auto px-6 pt-4">
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+            <AlertCircle size={15} className="shrink-0" />
+            <span className="font-medium">Error saving task:</span> {saveError}
+            <button onClick={() => setSaveError(null)} className="ml-auto text-red-400 hover:text-red-600"><X size={14} /></button>
+          </div>
+        </div>
+      )}
 
       {/* Kanban Board */}
       <div className="max-w-[1400px] mx-auto px-6 py-6">
