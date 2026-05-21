@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Waves, Droplets, Eye, ArrowRight, SlidersHorizontal, X } from "lucide-react";
+import { Waves, Droplets, Eye, ArrowRight, SlidersHorizontal, X, LayoutGrid, Map as MapIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { getAllProperties } from "@/lib/db/properties";
 import type { Property, PropertyStatus, PropertyType } from "@/types";
+
+const PropertyMap = dynamic(
+  () => import("./property-map").then(m => m.PropertyMap),
+  { ssr: false, loading: () => <div className="h-[600px] rounded-xl bg-stone-100 animate-pulse" /> }
+);
 
 const STATUS_CONFIG: Record<PropertyStatus, { label: string; dotClass: string; badgeClass: string }> = {
   available:      { label: "Available",      dotClass: "bg-emerald-400", badgeClass: "bg-emerald-50  text-emerald-700  border-emerald-200"  },
@@ -121,9 +127,21 @@ export function PropertyGridClient({ serverProperties = [], statusFilter }: Prop
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
   useEffect(() => {
-    getAllProperties().then(setAllProperties).finally(() => setLoading(false));
+    // Build a coord lookup from serverProperties (mock data always has coords)
+    const coordMap = new Map(serverProperties.map(p => [p.id, { lat: p.lat, lng: p.lng }]));
+    getAllProperties()
+      .then(data => {
+        const merged = (data.length > 0 ? data : serverProperties).map(p => ({
+          ...p,
+          lat: p.lat ?? coordMap.get(p.id)?.lat,
+          lng: p.lng ?? coordMap.get(p.id)?.lng,
+        }));
+        setAllProperties(merged);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const areas = useMemo(() =>
@@ -170,22 +188,50 @@ export function PropertyGridClient({ serverProperties = [], statusFilter }: Prop
 
       {/* Filter toggle bar */}
       <div className="flex items-center justify-between gap-3">
-        <button
-          onClick={() => setShowFilters(f => !f)}
-          className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg border text-sm font-medium transition-colors ${
-            showFilters || count > 0
-              ? "bg-[#B8960C] border-[#B8960C] text-white"
-              : "border-stone-200 text-stone-600 hover:border-[#B8960C] hover:text-[#B8960C]"
-          }`}
-        >
-          <SlidersHorizontal size={14} strokeWidth={2} />
-          Filters
-          {count > 0 && (
-            <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-white text-[#B8960C] text-[10px] font-bold">
-              {count}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(f => !f)}
+            className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg border text-sm font-medium transition-colors ${
+              showFilters || count > 0
+                ? "bg-[#B8960C] border-[#B8960C] text-white"
+                : "border-stone-200 text-stone-600 hover:border-[#B8960C] hover:text-[#B8960C]"
+            }`}
+          >
+            <SlidersHorizontal size={14} strokeWidth={2} />
+            Filters
+            {count > 0 && (
+              <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-white text-[#B8960C] text-[10px] font-bold">
+                {count}
+              </span>
+            )}
+          </button>
+
+          {/* Grid / Map toggle */}
+          <div className="flex items-center rounded-lg border border-stone-200 overflow-hidden">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`inline-flex items-center gap-1.5 h-9 px-3 text-sm font-medium transition-colors ${
+                viewMode === "grid"
+                  ? "bg-[#B8960C] text-white"
+                  : "bg-white text-stone-500 hover:text-[#B8960C]"
+              }`}
+            >
+              <LayoutGrid size={14} strokeWidth={2} />
+              Grid
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={`inline-flex items-center gap-1.5 h-9 px-3 text-sm font-medium border-l border-stone-200 transition-colors ${
+                viewMode === "map"
+                  ? "bg-[#B8960C] text-white border-[#B8960C]"
+                  : "bg-white text-stone-500 hover:text-[#B8960C]"
+              }`}
+            >
+              <MapIcon size={14} strokeWidth={2} />
+              Map
+            </button>
+          </div>
+        </div>
         <span className="text-sm text-stone-400">{filtered.length} {filtered.length === 1 ? "property" : "properties"}</span>
       </div>
 
@@ -267,13 +313,22 @@ export function PropertyGridClient({ serverProperties = [], statusFilter }: Prop
         </div>
       )}
 
-      {/* Grid */}
-      {filtered.length === 0 ? (
-        <div className="py-16 text-center text-stone-400 text-sm">No properties match these filters.</div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map(property => <PropertyCard key={property.id} property={property} />)}
+      {/* Map view */}
+      {viewMode === "map" && (
+        <div className="h-[620px] rounded-xl overflow-hidden border border-stone-200 shadow-sm">
+          <PropertyMap properties={filtered} />
         </div>
+      )}
+
+      {/* Grid view */}
+      {viewMode === "grid" && (
+        filtered.length === 0 ? (
+          <div className="py-16 text-center text-stone-400 text-sm">No properties match these filters.</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map(property => <PropertyCard key={property.id} property={property} />)}
+          </div>
+        )
       )}
     </div>
   );
