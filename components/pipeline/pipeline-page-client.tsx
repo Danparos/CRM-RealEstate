@@ -1,23 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PipelineBoard } from "@/components/pipeline/pipeline-board";
 import { ClientCard } from "@/components/clients/client-card";
-import { getAllClients } from "@/lib/db/clients";
+import { ManageStagesDialog } from "@/components/pipeline/manage-stages-dialog";
+import { usePipelineStages } from "@/hooks/use-pipeline-stages";
+import { getAllClients, updateClientStage } from "@/lib/db/clients";
 import { cn } from "@/lib/utils";
 import type { Client } from "@/types";
-
-interface StageConfig {
-  id: string;
-  label: string;
-  description: string;
-  color: string;
-}
-
-interface Props {
-  stages: StageConfig[];
-}
 
 const STAGE_ACCENT: Record<string, { dot: string; border: string; bg: string }> = {
   new_inquiry:           { dot: "bg-sky-400",     border: "border-sky-400",     bg: "bg-sky-50"     },
@@ -29,13 +20,18 @@ const STAGE_ACCENT: Record<string, { dot: string; border: string; bg: string }> 
   signed_closed:         { dot: "bg-emerald-500", border: "border-emerald-500", bg: "bg-emerald-50" },
 };
 
-export function PipelinePageClient({ stages }: Props) {
+export function PipelinePageClient() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const activeStage  = searchParams.get("stage");
 
   const [allClients, setAllClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
+  const [manageOpen, setManageOpen] = useState(false);
+
+  const {
+    stages, updateStage, addStage, deleteStage, moveStage, resetToDefaults, loaded,
+  } = usePipelineStages();
 
   useEffect(() => {
     getAllClients()
@@ -43,7 +39,35 @@ export function PipelinePageClient({ stages }: Props) {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
+  const handleMoveStage = useCallback(async (clientId: string, newStageId: string) => {
+    const newStage    = newStageId as Client["stage"];
+    const now         = new Date().toISOString();
+    const stageLabel  = stages.find(s => s.id === newStageId)?.label ?? newStageId;
+
+    // Optimistic update
+    setAllClients((prev) =>
+      prev.map((c) =>
+        c.id === clientId
+          ? { ...c, stage: newStage, stageEnteredAt: now, lastActivityAt: now, lastActivityNote: `Moved to ${stageLabel}` }
+          : c
+      )
+    );
+
+    // Persist to DB — revert on failure
+    try {
+      await updateClientStage(clientId, newStage, `Moved to ${stageLabel}`);
+    } catch {
+      // Revert: reload from DB
+      getAllClients().then(setAllClients);
+    }
+  }, [stages]);
+
+  const clientCountByStage = allClients.reduce<Record<string, number>>((acc, c) => {
+    acc[c.stage] = (acc[c.stage] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  if (loading || !loaded) {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-3">
@@ -55,13 +79,12 @@ export function PipelinePageClient({ stages }: Props) {
   }
 
   if (activeStage) {
-    const stageCfg   = stages.find(s => s.id === activeStage);
-    const clients    = allClients.filter(c => c.stage === activeStage);
-    const accent     = STAGE_ACCENT[activeStage] ?? { dot: "bg-stone-400", border: "border-stone-300", bg: "bg-stone-50" };
+    const stageCfg = stages.find(s => s.id === activeStage);
+    const clients  = allClients.filter(c => c.stage === activeStage);
+    const accent   = STAGE_ACCENT[activeStage] ?? { dot: "bg-stone-400", border: "border-stone-300", bg: "bg-stone-50" };
 
     return (
       <div className="flex flex-col gap-5 pb-8">
-        {/* Page header — same layout as main pipeline board */}
         <div className="flex items-end justify-between gap-4 px-1 pb-2 border-b border-stone-100">
           <div>
             <h1 className="font-serif text-[36px] font-semibold leading-none tracking-wide text-stone-900">
@@ -74,12 +97,10 @@ export function PipelinePageClient({ stages }: Props) {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Stage badge */}
             <div className={cn("flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold", accent.bg, accent.border)}>
               <span className={cn("w-2 h-2 rounded-full shrink-0", accent.dot)} />
               <span className="text-stone-700">{stageCfg?.label ?? activeStage}</span>
             </div>
-            {/* Count pill */}
             <div className="rounded-xl border border-stone-200 bg-white px-4 py-2.5 shadow-sm shrink-0">
               <p className="text-[10px] uppercase tracking-wider font-semibold text-stone-400 mb-0.5">Clients</p>
               <p className="text-lg font-bold leading-none text-stone-700">{clients.length}</p>
@@ -87,7 +108,6 @@ export function PipelinePageClient({ stages }: Props) {
           </div>
         </div>
 
-        {/* Grid */}
         {clients.length > 0 ? (
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
             {clients.map(client => (
@@ -107,12 +127,28 @@ export function PipelinePageClient({ stages }: Props) {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <PipelineBoard
-        clients={allClients}
+    <>
+      <div className="h-full flex flex-col">
+        <PipelineBoard
+          clients={allClients}
+          stages={stages}
+          onClientClick={(c) => router.push(`/clients/${c.id}`)}
+          onManageStages={() => setManageOpen(true)}
+          onMoveStage={handleMoveStage}
+        />
+      </div>
+
+      <ManageStagesDialog
+        open={manageOpen}
         stages={stages}
-        onClientClick={(c) => router.push(`/clients/${c.id}`)}
+        onClose={() => setManageOpen(false)}
+        onUpdate={updateStage}
+        onAdd={addStage}
+        onDelete={deleteStage}
+        onMove={moveStage}
+        onReset={resetToDefaults}
+        clientCountByStage={clientCountByStage}
       />
-    </div>
+    </>
   );
 }

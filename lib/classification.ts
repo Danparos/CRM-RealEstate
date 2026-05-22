@@ -20,24 +20,16 @@ export function daysInStage(stageEnteredAt?: string): number | null {
   return Math.floor((Date.now() - new Date(stageEnteredAt).getTime()) / 86_400_000);
 }
 
-export function daysInStageWarning(stage: PipelineStage, days: number): boolean {
-  const thresholds: Record<PipelineStage, number> = {
-    new_inquiry:           7,
-    qualified:             14,
-    property_presentation: 21,
-    offer_submitted:       5,
-    negotiation:           10,
-    legal_process:         30,
-    signed_closed:         Infinity,
-  };
-  return days > (thresholds[stage] ?? 14);
+// Returns true when a client's days in stage exceed the configured SLA threshold
+export function daysInStageWarning(days: number, threshold: number): boolean {
+  return days > threshold;
 }
 
 export interface StageRule {
   id: PipelineStage;
-  enterTrigger: string;   // what causes entry into this stage
-  exitTrigger: string;    // what causes advancement to next stage
-  slaWarningDays: number; // days before orange warning dot
+  enterTrigger: string;
+  exitTrigger: string;
+  slaWarningDays: number;
 }
 
 export const STAGE_RULES: StageRule[] = [
@@ -81,6 +73,6 @@ export const STAGE_RULES: StageRule[] = [
     id: "signed_closed",
     enterTrigger: "Final contract signed by both parties — deal officially closed",
     exitTrigger: "N/A — terminal stage. Archive after post-sale follow-up complete.",
-    slaWarningDays: Infinity,
+    slaWarningDays: 9999,
   },
 ];

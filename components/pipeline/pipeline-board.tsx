@@ -1,21 +1,17 @@
 "use client";
 
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { StageColumn } from "./stage-column";
-import { computeClientClass, getClassLabel } from "@/lib/classification";
+import { computeClientClass } from "@/lib/classification";
+import type { EditableStage } from "@/hooks/use-pipeline-stages";
 import type { Client } from "@/types";
-
-interface StageConfig {
-  id: string;
-  label: string;
-  description: string;
-  color: string;
-}
 
 interface PipelineBoardProps {
   clients: Client[];
-  stages: StageConfig[];
+  stages: EditableStage[];
   onClientClick?: (client: Client) => void;
+  onManageStages?: () => void;
+  onMoveStage?: (clientId: string, newStageId: string) => void;
 }
 
 function StatPill({
@@ -48,12 +44,11 @@ function StatPill({
   );
 }
 
-export function PipelineBoard({ clients, stages, onClientClick }: PipelineBoardProps) {
+export function PipelineBoard({ clients, stages, onClientClick, onManageStages, onMoveStage }: PipelineBoardProps) {
   const activeClients = clients.filter((c) => c.stage !== "signed_closed");
   const closedClients = clients.filter((c) => c.stage === "signed_closed");
   const totalValue    = activeClients.reduce((s, c) => s + (c.budgetMax ?? 0), 0);
 
-  // Use computed class (from lastActivityAt) for stats
   const byClass = { A: 0, B: 0, C: 0 };
   activeClients.forEach((c) => {
     const cls = computeClientClass(c.lastActivityAt);
@@ -82,6 +77,25 @@ export function PipelineBoard({ clients, stages, onClientClick }: PipelineBoardP
           <StatPill label="Active Clients" value={activeClients.length} sub={`${stages.length} stages`} />
           <StatPill label="Pipeline Value" value={formatValue(totalValue)} sub="sum of max budgets" accent="gold" />
           <StatPill label="Closed" value={closedClients.length} sub="signed & closed" accent="green" />
+          {onManageStages && (
+            <button
+              type="button"
+              onClick={onManageStages}
+              className={cn(
+                "h-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-stone-200 bg-white shadow-sm",
+                "text-[12px] font-semibold text-stone-500 hover:text-stone-800 hover:border-stone-300",
+                "transition-all duration-150 shrink-0"
+              )}
+              title="Add, edit or delete pipeline stages"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+                <path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>
+              </svg>
+              Stages
+            </button>
+          )}
         </div>
       </div>
 
@@ -114,8 +128,10 @@ export function PipelineBoard({ clients, stages, onClientClick }: PipelineBoardP
           <StageColumn
             key={stage.id}
             stage={stage}
+            stages={stages}
             clients={clients.filter((c) => c.stage === stage.id)}
             onClientClick={onClientClick}
+            onMoveStage={onMoveStage}
           />
         ))}
       </div>

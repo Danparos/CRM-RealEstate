@@ -128,3 +128,26 @@ export async function upsertClient(c: Client): Promise<void> {
 export async function generateClientId(): Promise<string> {
   return `local-${Date.now()}`;
 }
+
+export async function updateClientStage(
+  clientId: string,
+  newStage: Client["stage"],
+  note?: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+  try {
+    const { error } = await supabase
+      .from("clients")
+      .update({
+        stage:              newStage,
+        stage_entered_at:   now,
+        last_activity_at:   now,
+        last_activity_note: note ?? `Moved to ${newStage.replace(/_/g, " ")} stage`,
+        updated_at:         now,
+      })
+      .eq("id", clientId);
+    if (error) console.error("[db/clients] updateClientStage:", error.message);
+  } catch (err) {
+    console.error("[db/clients] updateClientStage unexpected:", err);
+  }
+}
