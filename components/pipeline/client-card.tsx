@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ClientClassBadge } from "@/components/crm/client-class-badge";
 import { PriceGroupBadge } from "@/components/crm/price-group-badge";
 import { Avatar } from "@/components/ui/avatar";
+import { computeClientClass, daysInStage, daysInStageWarning } from "@/lib/classification";
 import type { Client } from "@/types";
 
 interface ClientCardProps {
@@ -55,12 +56,12 @@ const BORDER_ACCENT: Record<string, string> = {
 };
 
 export function ClientCard({ client, onClick }: ClientCardProps) {
-  const flag = client.nationality ? (NATIONALITY_FLAGS[client.nationality] ?? "") : "";
-  const budgetRange = formatBudgetRange(client.budgetMin, client.budgetMax);
-  const daysInStage = client.stageEnteredAt
-    ? Math.floor((Date.now() - new Date(client.stageEnteredAt).getTime()) / 86_400_000)
-    : null;
-  const showWarning = daysInStage != null && daysInStage > 14;
+  const flag         = client.nationality ? (NATIONALITY_FLAGS[client.nationality] ?? "") : "";
+  const budgetRange  = formatBudgetRange(client.budgetMin, client.budgetMax);
+  const stageDays    = daysInStage(client.stageEnteredAt);
+  const computedCls  = computeClientClass(client.lastActivityAt);
+  const mismatch     = computedCls !== client.clientClass;
+  const stageWarning = stageDays != null && daysInStageWarning(client.stage, stageDays);
   const accentBorder = BORDER_ACCENT[client.clientClass] ?? "";
 
   return (
@@ -83,8 +84,16 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
         <span className="font-serif text-sm font-medium text-gray-900 leading-tight truncate">
           {client.firstName} {client.lastName}
         </span>
-        <div className="shrink-0">
+        <div className="shrink-0 flex items-center gap-1">
           <ClientClassBadge clientClass={client.clientClass} />
+          {mismatch && (
+            <span
+              className="text-[9px] text-orange-400 font-semibold leading-none"
+              title={`Activity suggests class ${computedCls}`}
+            >
+              →{computedCls}?
+            </span>
+          )}
         </div>
       </div>
 
@@ -115,13 +124,28 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
         </p>
       )}
 
-      {/* Agent */}
-      {client.primaryAgent && (
-        <div className="flex items-center gap-1.5">
-          <Avatar name={client.primaryAgent} size="xs" />
-          <span className="text-[11px] text-stone-500 truncate">{client.primaryAgent}</span>
-        </div>
-      )}
+      {/* Agent + days in stage */}
+      <div className="flex items-center justify-between gap-2">
+        {client.primaryAgent && (
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Avatar name={client.primaryAgent} size="xs" />
+            <span className="text-[11px] text-stone-500 truncate">{client.primaryAgent}</span>
+          </div>
+        )}
+        {stageDays != null && (
+          <span
+            className={cn(
+              "text-[10px] font-semibold shrink-0 tabular-nums px-1.5 py-0.5 rounded-full",
+              stageWarning
+                ? "bg-orange-100 text-orange-500"
+                : "bg-stone-100 text-stone-400"
+            )}
+            title={stageWarning ? "Overdue — consider advancing or re-engaging" : `${stageDays} days in this stage`}
+          >
+            {stageDays}d
+          </span>
+        )}
+      </div>
 
       {/* Last activity */}
       {client.lastActivityAt && (
@@ -141,10 +165,10 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
       )}
 
       {/* Stale warning dot */}
-      {showWarning && (
+      {stageWarning && (
         <span
-          className="absolute top-3 right-3 h-2 w-2 rounded-full bg-orange-400"
-          title={`${daysInStage} days in this stage`}
+          className="absolute top-3 right-3 h-2 w-2 rounded-full bg-orange-400 animate-pulse"
+          title={`${stageDays} days in this stage — SLA exceeded`}
         />
       )}
     </div>

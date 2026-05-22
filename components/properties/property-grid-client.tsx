@@ -315,7 +315,7 @@ export function PropertyGridClient({ serverProperties = [], statusFilter }: Prop
 
       {/* Map view */}
       {viewMode === "map" && (
-        <div className="h-[620px] rounded-xl overflow-hidden border border-stone-200 shadow-sm">
+        <div className="h-[620px] lg:h-[920px] rounded-xl overflow-hidden border border-stone-200 shadow-sm">
           <PropertyMap properties={filtered} />
         </div>
       )}
