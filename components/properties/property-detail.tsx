@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Pencil, Waves, Droplets, Mountain, MapPin, Navigation, Check, X, Plus, ChevronUp, ChevronDown, FileDown, Link2 } from "lucide-react";
 import { EditPropertyForm } from "@/components/properties/edit-property-form";
+import { PotentialBuyers } from "./potential-buyers";
 import { formatCurrency } from "@/lib/utils";
 import { AreaSelect } from "@/components/properties/area-select";
 import { getProperty, upsertProperty } from "@/lib/db/properties";
@@ -863,6 +864,9 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
               <p className="text-sm text-stone-700 whitespace-pre-wrap leading-relaxed">{property.comments}</p>
             </Box>
           )}
+
+          {/* Potential Buyers */}
+          <PotentialBuyers property={property} />
 
         </div>
       </div>
