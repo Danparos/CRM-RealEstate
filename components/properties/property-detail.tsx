@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowLeft, Pencil, Waves, Droplets, Mountain, MapPin, Navigation, Check, X, Plus, ChevronUp, ChevronDown, FileDown, Link2 } from "lucide-react";
+import { ArrowLeft, Pencil, Waves, Droplets, Mountain, MapPin, Navigation, Check, X, Plus, ChevronUp, ChevronDown, FileDown } from "lucide-react";
 import { EditPropertyForm } from "@/components/properties/edit-property-form";
 import { PotentialBuyers } from "./potential-buyers";
+import { PresentationTracker } from "./presentation-tracker";
+import { SendPresentationModal } from "./send-presentation-modal";
 import { formatCurrency } from "@/lib/utils";
 import { AreaSelect } from "@/components/properties/area-select";
 import { getProperty, upsertProperty } from "@/lib/db/properties";
@@ -115,7 +117,7 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
   const [newHeating, setNewHeating] = useState("");
   const [pdfPhotos, setPdfPhotos] = useState<string[]>([]);
   const [pdfLoading, setPdfLoading] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
 
   useEffect(() => {
     getProperty(initial.id).then(override => {
@@ -148,14 +150,6 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
     } finally {
       setPdfLoading(false);
     }
-  };
-
-  const handleShare = () => {
-    const url = `${window.location.origin}/share/${property.id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
-    });
   };
 
   const handleSave = (updated: Property) => {
@@ -233,17 +227,18 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
             {statusCfg.label}
           </span>
           <button
-            onClick={handleShare}
-            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-stone-200 bg-white text-stone-600 text-sm font-medium hover:border-stone-300 hover:text-stone-800 transition-colors shadow-sm">
-            {shareCopied ? <Check size={14} strokeWidth={2.5} className="text-emerald-500" /> : <Link2 size={14} strokeWidth={2} />}
-            {shareCopied ? "Copied!" : "Share"}
-          </button>
-          <button
             onClick={handleDownloadPDF}
             disabled={pdfLoading}
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-stone-200 bg-white text-stone-600 text-sm font-medium hover:border-stone-300 hover:text-stone-800 transition-colors shadow-sm disabled:opacity-50">
             <FileDown size={14} strokeWidth={2} />
             {pdfLoading ? "Generating…" : "Export PDF"}
+          </button>
+          <button
+            onClick={() => setSendOpen(true)}
+            className="flex items-center gap-2 rounded-xl bg-[#B8960C] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[#9a7a0a] transition-colors shadow-sm"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Send Presentation
           </button>
           <button onClick={() => { setEditingSection(null); setEditing(true); }}
             className="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-[#B8960C] text-white text-sm font-semibold hover:bg-[#9e7f0a] transition-colors shadow-sm">
@@ -865,11 +860,16 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
             </Box>
           )}
 
+          {/* Presentation Tracker */}
+          <PresentationTracker propertyId={property.id} />
+
           {/* Potential Buyers */}
           <PotentialBuyers property={property} />
 
         </div>
       </div>
+
+      <SendPresentationModal open={sendOpen} property={property} onClose={() => setSendOpen(false)} />
     </div>
   );
 }

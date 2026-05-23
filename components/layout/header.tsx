@@ -5,6 +5,7 @@ import { Avatar } from "@/components/ui/avatar"
 
 interface HeaderProps {
   user: { name: string; avatar?: string };
+  collapsed?: boolean;
   onMenuToggle?: () => void;
 }
 
@@ -24,7 +25,7 @@ function getPageMeta(pathname: string) {
   return match ? PAGE_TITLES[match] : { title: "Dashboard", subtitle: "" }
 }
 
-export function Header({ user, onMenuToggle }: HeaderProps) {
+export function Header({ user, collapsed = false, onMenuToggle }: HeaderProps) {
   const pathname = usePathname()
   const { title, subtitle } = getPageMeta(pathname)
 
@@ -36,7 +37,8 @@ export function Header({ user, onMenuToggle }: HeaderProps) {
 
   return (
     <header
-      className="fixed top-0 right-0 z-30 flex h-16 items-center justify-between bg-white border-b border-warm-200 px-4 md:px-8 left-0 lg:left-[var(--sidebar-w,240px)]"
+      className="fixed top-0 right-0 z-30 flex h-16 items-center justify-between bg-white border-b border-warm-200 px-4 md:px-8"
+      style={{ left: collapsed ? "4rem" : "15rem", transition: "left 300ms" }}
     >
       {/* Mobile hamburger */}
       <button

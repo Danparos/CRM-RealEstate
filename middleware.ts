@@ -25,7 +25,9 @@ export async function middleware(request: NextRequest) {
 
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
   const isSharePage = request.nextUrl.pathname.startsWith("/share/");
-  const isPublic = request.nextUrl.pathname === "/" || isLoginPage || isSharePage;
+  const isPresentationPage = request.nextUrl.pathname.startsWith("/p/");
+  const isPresentationApi = request.nextUrl.pathname.startsWith("/api/presentations/");
+  const isPublic = request.nextUrl.pathname === "/" || isLoginPage || isSharePage || isPresentationPage || isPresentationApi;
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

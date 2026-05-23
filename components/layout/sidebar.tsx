@@ -1,5 +1,4 @@
 "use client";
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { LayoutDashboard, Users, Building2, GitMerge, CalendarDays, BarChart3, ShieldCheck, CheckSquare, ChevronLeft, ChevronRight, LogOut, FileText } from "lucide-react";
@@ -7,16 +6,31 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
 
-const NAV_ITEMS = [
-  { label: "Dashboard",  icon: LayoutDashboard, href: "/dashboard"  },
-  { label: "Pipeline",   icon: GitMerge,         href: "/pipeline"   },
-  { label: "Clients",    icon: Users,            href: "/clients"    },
-  { label: "Properties", icon: Building2,        href: "/properties" },
-  { label: "Calendar",   icon: CalendarDays,     href: "/calendar"   },
-  { label: "Marketing",  icon: FileText,         href: "/marketing"  },
-  { label: "Reports",    icon: BarChart3,        href: "/reports"    },
-  { label: "Tasks",      icon: CheckSquare,      href: "/tasks"      },
-  { label: "Admin",      icon: ShieldCheck,      href: "/admin"      },
+const NAV_SECTIONS = [
+  {
+    label: "Main",
+    items: [
+      { label: "Dashboard",  icon: LayoutDashboard, href: "/dashboard"  },
+      { label: "Pipeline",   icon: GitMerge,        href: "/pipeline"   },
+      { label: "Clients",    icon: Users,           href: "/clients"    },
+      { label: "Properties", icon: Building2,       href: "/properties" },
+    ],
+  },
+  {
+    label: "Tools",
+    items: [
+      { label: "Calendar",   icon: CalendarDays,    href: "/calendar"   },
+      { label: "Marketing",  icon: FileText,        href: "/marketing"  },
+      { label: "Tasks",      icon: CheckSquare,     href: "/tasks"      },
+      { label: "Reports",    icon: BarChart3,       href: "/reports"    },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { label: "Admin",      icon: ShieldCheck,     href: "/admin"      },
+    ],
+  },
 ];
 
 const CLASS_FILTERS = [
@@ -54,7 +68,8 @@ const PROPERTY_STATUSES = [
 
 interface SidebarProps {
   user: { name: string; role: string; avatar?: string };
-  activePath?: string;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -164,14 +179,13 @@ function SubFilters({
   );
 }
 
-export function Sidebar({ user, mobileOpen = false, onMobileClose }: SidebarProps) {
+export function Sidebar({ user, collapsed, onToggleCollapse, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname     = usePathname();
   const searchParams = useSearchParams();
   const router       = useRouter();
   const activeClass  = searchParams.get("class");
   const activeStage  = searchParams.get("stage");
   const activeStatus = searchParams.get("status");
-  const [collapsed, setCollapsed] = useState(false);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -180,17 +194,13 @@ export function Sidebar({ user, mobileOpen = false, onMobileClose }: SidebarProp
     router.refresh();
   };
 
-  useEffect(() => {
-    document.documentElement.style.setProperty("--sidebar-w", collapsed ? "64px" : "240px");
-  }, [collapsed]);
-
   return (
     <aside className={cn(
       "fixed left-0 top-0 z-40 flex h-screen flex-col bg-white border-r border-warm-200 transition-all duration-300 overflow-hidden",
       // Desktop: collapse/expand
-      collapsed ? "lg:w-16" : "lg:w-[240px]",
+      collapsed ? "lg:w-16" : "lg:w-60",
       // Mobile: full-width drawer, slides in/out
-      "w-[240px]",
+      "w-60",
       mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
     )}>
       {/* Mobile close button */}
@@ -201,7 +211,7 @@ export function Sidebar({ user, mobileOpen = false, onMobileClose }: SidebarProp
       )}
       {/* Desktop toggle button */}
       <button
-        onClick={() => setCollapsed(c => !c)}
+        onClick={onToggleCollapse}
         title={collapsed ? "Expand menu" : "Collapse menu"}
         className="hidden lg:flex absolute right-2 top-7 z-50 h-6 w-6 items-center justify-center rounded-full border border-warm-200 bg-white shadow-sm hover:bg-warm-50 hover:border-[#B8960C] hover:text-[#B8960C] transition-colors text-warm-400"
       >
@@ -223,39 +233,60 @@ export function Sidebar({ user, mobileOpen = false, onMobileClose }: SidebarProp
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-5 space-y-0.5" style={{ padding: collapsed ? "20px 8px" : "20px 12px" }}>
-        {NAV_ITEMS.map(({ label, icon: Icon, href }) => {
-          const isActive = pathname === href || pathname.startsWith(href + "/");
-          return (
-            <div key={href}>
-              <Link
-                href={href}
-                title={collapsed ? label : undefined}
-                className={cn(
-                  "group flex items-center rounded-md text-sm font-medium transition-colors duration-150",
-                  collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
-                  isActive ? "bg-gold-50 text-gold-600" : "text-warm-500 hover:bg-warm-100 hover:text-warm-800"
+      <nav className="flex-1 overflow-y-auto" style={{ padding: collapsed ? "16px 8px" : "16px 12px" }}>
+        {NAV_SECTIONS.map((section, sIdx) => (
+          <div key={section.label}>
+            {/* Section divider (not before first section) */}
+            {sIdx > 0 && (
+              <div className={cn("flex items-center gap-2 my-3", collapsed && "justify-center")}>
+                <div className="flex-1 h-px bg-stone-200" />
+                {!collapsed && (
+                  <span className="text-[9px] uppercase tracking-[0.15em] font-semibold text-stone-400 shrink-0">
+                    {section.label}
+                  </span>
                 )}
-              >
-                <Icon size={16} strokeWidth={isActive ? 2 : 1.75} className={cn(
-                  "shrink-0 transition-colors",
-                  isActive ? "text-gold-500" : "text-warm-400 group-hover:text-warm-600"
-                )} />
-                {!collapsed && <span className="tracking-wide">{label}</span>}
-                {!collapsed && isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-gold-500" />}
-              </Link>
+                <div className="flex-1 h-px bg-stone-200" />
+              </div>
+            )}
 
-              {!collapsed && isActive && (href === "/clients" || href === "/pipeline" || href === "/properties") && (
-                <SubFilters
-                  basePath={href}
-                  activeClass={activeClass}
-                  activeStage={activeStage}
-                  activeStatus={activeStatus}
-                />
-              )}
+            <div className="space-y-0.5">
+              {section.items.map(({ label, icon: Icon, href }) => {
+                const isActive = pathname === href || pathname.startsWith(href + "/");
+                return (
+                  <div key={href}>
+                    <Link
+                      href={href}
+                      title={collapsed ? label : undefined}
+                      className={cn(
+                        "group flex items-center rounded-md text-[13px] font-semibold transition-colors duration-150",
+                        collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
+                        isActive
+                          ? "bg-[#B8960C]/10 text-[#B8960C]"
+                          : "text-stone-700 hover:bg-stone-100 hover:text-stone-900"
+                      )}
+                    >
+                      <Icon size={16} strokeWidth={isActive ? 2.25 : 1.75} className={cn(
+                        "shrink-0 transition-colors",
+                        isActive ? "text-[#B8960C]" : "text-stone-500 group-hover:text-stone-700"
+                      )} />
+                      {!collapsed && <span>{label}</span>}
+                      {!collapsed && isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#B8960C]" />}
+                    </Link>
+
+                    {!collapsed && isActive && (href === "/clients" || href === "/pipeline" || href === "/properties") && (
+                      <SubFilters
+                        basePath={href}
+                        activeClass={activeClass}
+                        activeStage={activeStage}
+                        activeStatus={activeStatus}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </nav>
 
       {/* User */}

@@ -158,6 +158,21 @@ export async function getProperty(id: string): Promise<Property | null> {
   }
 }
 
+export async function getPropertyByReference(reference: string): Promise<Property | null> {
+  try {
+    const { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .eq("reference", reference)
+      .single();
+    if (error) { console.error("[db/properties] getPropertyByReference:", error.message); return null; }
+    return data ? toProperty(data as Record<string, unknown>) : null;
+  } catch (err) {
+    console.error("[db/properties] getPropertyByReference unexpected:", err);
+    return null;
+  }
+}
+
 export async function upsertProperty(p: Property): Promise<void> {
   try {
     const { error } = await supabase

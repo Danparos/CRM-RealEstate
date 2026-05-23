@@ -158,7 +158,7 @@ export function MarketingPageClient() {
                   <BrochureTemplate
                     property={selectedProperty}
                     lang={selectedLang}
-                    agentName="Errikos Kohls"
+                    agentName="CRM - Real Estate"
                     agentPhone="+30 22840 00000"
                     agentEmail="info@errikoskohls.com"
                   />
@@ -190,7 +190,7 @@ export function MarketingPageClient() {
         property={selectedProperty}
         client={selectedClientObj}
         lang={selectedLang}
-        agentName="Errikos Kohls"
+        agentName="CRM - Real Estate"
         onClose={() => setEmailOpen(false)}
         onSent={handleEmailSent}
       />
