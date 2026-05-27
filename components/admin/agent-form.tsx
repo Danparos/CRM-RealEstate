@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Send, Loader2, CheckCircle } from "lucide-react";
 import type { Agent, UserRole } from "@/types";
 import { ROLE_CONFIG, LANGUAGE_OPTIONS } from "@/lib/agents-config";
 
@@ -18,6 +18,7 @@ interface Props {
 }
 
 export function AgentForm({ agent, nextId, onSave, onCancel }: Props) {
+  const isNew = !agent;
   const [form, setForm] = useState({
     name:      agent?.name      ?? "",
     email:     agent?.email     ?? "",
@@ -27,6 +28,8 @@ export function AgentForm({ agent, nextId, onSave, onCancel }: Props) {
     active:    agent?.active    ?? true,
   });
   const [newLang, setNewLang] = useState("");
+  const [sendInvite, setSendInvite] = useState(isNew);
+  const [inviteState, setInviteState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   const set = <K extends keyof typeof form>(k: K, v: typeof form[K]) =>
     setForm(p => ({ ...p, [k]: v }));
@@ -38,13 +41,29 @@ export function AgentForm({ agent, nextId, onSave, onCancel }: Props) {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
+    const saved: Agent = {
       id:        agent?.id ?? nextId,
       createdAt: agent?.createdAt ?? new Date().toISOString().slice(0, 10),
       ...form,
-    });
+    };
+    onSave(saved);
+    if (isNew && sendInvite && form.email) {
+      setInviteState("sending");
+      try {
+        const res = await fetch("/api/admin/invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: form.email, name: form.name, role: form.role }),
+        });
+        const json = await res.json() as { error?: string };
+        if (!res.ok) throw new Error(json.error ?? "Failed");
+        setInviteState("sent");
+      } catch {
+        setInviteState("error");
+      }
+    }
   };
 
   return (
@@ -108,6 +127,26 @@ export function AgentForm({ agent, nextId, onSave, onCancel }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Invite toggle — new agents only */}
+      {isNew && (
+        <div className="flex items-center gap-3 py-3 px-4 rounded-xl bg-stone-50 border border-stone-200">
+          <button
+            type="button"
+            onClick={() => setSendInvite(v => !v)}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${sendInvite ? "bg-[#B8960C]" : "bg-stone-300"}`}
+          >
+            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${sendInvite ? "translate-x-4" : "translate-x-0"}`} />
+          </button>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-stone-700">Send invite email</p>
+            <p className="text-xs text-stone-400">Agent will receive a link to set their password</p>
+          </div>
+          {inviteState === "sending" && <Loader2 size={14} className="animate-spin text-stone-400" />}
+          {inviteState === "sent" && <CheckCircle size={14} className="text-green-500" />}
+          {inviteState === "error" && <Send size={14} className="text-red-400" />}
+        </div>
+      )}
 
       <div className="flex gap-3 pt-2 border-t border-stone-100">
         <button type="submit"

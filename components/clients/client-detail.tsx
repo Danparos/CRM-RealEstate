@@ -15,11 +15,11 @@ import { getClient, upsertClient } from "@/lib/db/clients";
 import { getActivitiesForClient } from "@/lib/db/activities";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { Client, PipelineStage, Activity } from "@/types";
+import { createActivity } from "@/lib/db/activities";
+import { getAllAgents } from "@/lib/db/agents";
+import { createClient } from "@/lib/supabase/client";
 
-const ClientDocuments = dynamic(
-  () => import("@/components/clients/client-documents").then(m => ({ default: m.ClientDocuments })),
-  { ssr: false, loading: () => <div className="h-24 bg-white rounded-xl border border-stone-200 animate-pulse" /> }
-);
+import { DocumentsSection } from "@/components/documents/documents-section";
 
 const PropertyMatches = dynamic(
   () => import("@/components/clients/property-matches").then(m => ({ default: m.PropertyMatches })),
@@ -180,6 +180,7 @@ export function ClientDetail({ client: initialClient }: Props) {
   const [showSend, setShowSend] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [currentAgentName, setCurrentAgentName] = useState<string>("");
 
   useEffect(() => {
     getClient(initialClient.id).then(override => {
@@ -191,21 +192,84 @@ export function ClientDetail({ client: initialClient }: Props) {
     getActivitiesForClient(initialClient.id).then(setActivities);
   }, [initialClient.id]);
 
+  useEffect(() => {
+    async function loadCurrentAgent() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user?.email) return;
+        const agents = await getAllAgents();
+        const me = agents.find(a => a.email === user.email);
+        setCurrentAgentName(me?.name ?? user.email ?? "Agent");
+      } catch {}
+    }
+    loadCurrentAgent();
+  }, []);
+
+  const logActivity = useCallback(async (
+    type: Activity["type"],
+    note: string,
+    metadata?: Record<string, string>
+  ) => {
+    if (!currentAgentName) return;
+    const activity = await createActivity({
+      clientId: client.id,
+      type,
+      note,
+      agentName: currentAgentName,
+      metadata,
+    });
+    if (activity) setActivities(prev => [activity, ...prev]);
+  }, [client.id, currentAgentName]);
+
   const saveOverride = useCallback((updated: Client) => {
+    // Detect what changed against current snapshot BEFORE updating state
+    const agentName = currentAgentName || "Agent";
+    const log = (type: Activity["type"], note: string, metadata?: Record<string, string>) => {
+      createActivity({ clientId: updated.id, type, note, agentName, metadata })
+        .then(activity => { if (activity) setActivities(prev => [activity, ...prev]); });
+    };
+
+    if (client.stage !== updated.stage) {
+      log("stage_change",
+        `Stage: ${client.stage.replace(/_/g, " ")} → ${updated.stage.replace(/_/g, " ")}`,
+        { from: client.stage, to: updated.stage }
+      );
+    } else if (client.clientClass !== updated.clientClass) {
+      log("class_change",
+        `Class: ${client.clientClass ?? "—"} → ${updated.clientClass ?? "—"}`,
+        { from: client.clientClass ?? "", to: updated.clientClass ?? "" }
+      );
+    } else if (
+      client.budgetMin !== updated.budgetMin ||
+      client.budgetMax !== updated.budgetMax ||
+      client.priceGroup !== updated.priceGroup
+    ) {
+      log("note", "Budget updated");
+    } else if (client.lastActivityNote !== updated.lastActivityNote && updated.lastActivityNote) {
+      log("note", `Agent note: ${updated.lastActivityNote.slice(0, 80)}${updated.lastActivityNote.length > 80 ? "…" : ""}`);
+    } else {
+      log("note", "Profile updated");
+    }
+
     upsertClient(updated).catch(err => console.error("[ClientDetail] saveOverride:", err));
     setClient(updated);
-  }, []);
+  }, [client, currentAgentName, setActivities]);
 
   const handleArchive = () => {
     const updated = { ...client, archived: true, archivedAt: new Date().toISOString() };
-    saveOverride(updated);
+    logActivity("note", "Client archived");
+    upsertClient(updated).catch(err => console.error("[ClientDetail] archive:", err));
+    setClient(updated);
     setShowArchiveConfirm(false);
     router.push("/clients");
   };
 
   const handleReactivate = () => {
     const updated = { ...client, archived: false, archivedAt: undefined };
-    saveOverride(updated);
+    logActivity("note", "Client reactivated");
+    upsertClient(updated).catch(err => console.error("[ClientDetail] reactivate:", err));
+    setClient(updated);
   };
 
   const fullName    = `${client.firstName} ${client.lastName}`;
@@ -234,9 +298,16 @@ export function ClientDetail({ client: initialClient }: Props) {
           <Avatar name={fullName} size="xl" className="shrink-0" />
           <div className="flex-1 min-w-0">
             <h1 className="font-serif text-2xl font-bold text-stone-900 leading-tight">{displayName}</h1>
-            {client.primaryAgent && (
-              <p className="mt-1 text-sm text-stone-400">{client.primaryAgent}</p>
-            )}
+            <div className="flex items-center gap-3 mt-1">
+              {client.primaryAgent && (
+                <p className="text-sm text-stone-400">{client.primaryAgent}</p>
+              )}
+              {client.createdAt && (
+                <p className="text-[11px] text-stone-400">
+                  Added {new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(client.createdAt))}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {client.archived && (
@@ -377,7 +448,11 @@ export function ClientDetail({ client: initialClient }: Props) {
           <PropertyMatches client={client} />
 
           {/* Documents */}
-          <ClientDocuments clientId={client.id} />
+          <DocumentsSection
+              entityType="client"
+              entityId={client.id}
+              onActivity={note => logActivity("document", note)}
+            />
 
           {/* Activity Timeline */}
           <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
@@ -533,7 +608,7 @@ export function ClientDetail({ client: initialClient }: Props) {
             <div className="overflow-y-auto flex-1">
               <EditClientForm
                 client={client}
-                onSuccess={(updated) => { setClient(updated); setShowEdit(false); }}
+                onSuccess={(updated) => { saveOverride(updated); setShowEdit(false); }}
                 onCancel={() => setShowEdit(false)}
               />
             </div>

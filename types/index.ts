@@ -20,7 +20,7 @@ export type PropertyType =
 export type PropertyStatus =
   | "draft" | "available" | "under_offer"
   | "under_contract" | "sold" | "rented"
-  | "off_market" | "withdrawn" | "archived";
+  | "off_market" | "on_hold" | "withdrawn" | "archived";
 
 export type UserRole =
   | "admin" | "office_manager" | "senior_agent" | "agent" | "support";
@@ -79,7 +79,8 @@ export interface Client {
 
 export interface Activity {
   id: string;
-  clientId: string;
+  clientId?: string;
+  propertyId?: string;
   type: ActivityType;
   date: string;
   note: string;
@@ -112,6 +113,7 @@ export interface Property {
   title: Record<string, string>;
   type: PropertyType;
   status: PropertyStatus;
+  availableSince?: string;
 
   // Admin
   ownershipGroup?: string;
@@ -168,4 +170,5 @@ export interface Property {
   legalChecklist?: { label: string; checked: boolean }[];
 
   coverImage?: string;
+  createdAt?: string;
 }

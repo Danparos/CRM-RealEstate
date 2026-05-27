@@ -6,47 +6,42 @@ import { getAllProperties } from "@/lib/db/properties";
 import { formatCurrency } from "@/lib/utils";
 import type { Client, Property } from "@/types";
 
-const EXCLUDED_STATUSES: Property["status"][] = ["sold", "archived", "withdrawn"];
+const EXCLUDED_STATUSES: Property["status"][] = ["sold", "archived", "withdrawn", "draft", "on_hold"];
+
+function isNewListing(property: Property): boolean {
+  if (property.status !== "available" || !property.availableSince) return false;
+  return (Date.now() - new Date(property.availableSince).getTime()) / 86_400_000 <= 30;
+}
 const MAX_VISIBLE = 6;
 
 function matchesClient(property: Property, client: Client): boolean {
-  // Exclude sold / archived / withdrawn
   if (EXCLUDED_STATUSES.includes(property.status)) return false;
-
-  // Budget max
   if (client.budgetMax != null && property.askingPrice > client.budgetMax) return false;
-
-  // Budget min
   if (client.budgetMin != null && property.askingPrice < client.budgetMin) return false;
 
-  // Locations
   if (client.propertyLocations && client.propertyLocations.length > 0) {
     const areaLower = property.area.toLowerCase();
     const match = client.propertyLocations.some(
-      loc => loc.toLowerCase() === areaLower
+      loc => areaLower.includes(loc.toLowerCase()) || loc.toLowerCase().includes(areaLower)
     );
     if (!match) return false;
   }
 
-  // Property types
   if (client.propertyTypes && client.propertyTypes.length > 0) {
     if (!client.propertyTypes.includes(property.type)) return false;
   }
 
-  // Min bedrooms
   if (client.propertyBedroomsMin) {
     const min = parseInt(client.propertyBedroomsMin, 10);
     if (!isNaN(min) && property.bedrooms < min) return false;
   }
 
-  // Pool
-  if (client.propertyPool === "yes" && !property.pool) return false;
-
-  // Views
-  if (client.propertyViews && client.propertyViews.length > 0) {
-    if (client.propertyViews.includes("sea_view") && !property.seaView) return false;
-    if (client.propertyViews.includes("seafront") && !property.seafront) return false;
+  if (client.propertyBedroomsMax) {
+    const max = parseInt(client.propertyBedroomsMax, 10);
+    if (!isNaN(max) && property.bedrooms > max) return false;
   }
+
+  if (client.propertyPool === "yes" && !property.pool) return false;
 
   return true;
 }
@@ -112,7 +107,9 @@ export function PropertyMatches({ client }: Props) {
           /* Property grid */
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              {visible.map(property => (
+              {visible.map(property => {
+                const isNew = isNewListing(property);
+                return (
                 <Link
                   key={property.id}
                   href={`/properties/${property.id}`}
@@ -137,6 +134,11 @@ export function PropertyMatches({ client }: Props) {
                     <span className="absolute top-1.5 left-1.5 inline-flex items-center h-4 px-1.5 rounded bg-black/50 text-[10px] font-mono font-semibold text-white backdrop-blur-sm">
                       {property.reference}
                     </span>
+                    {isNew && (
+                      <span className="absolute top-1.5 right-1.5 inline-flex items-center h-4 px-1.5 rounded bg-emerald-500 text-[9px] font-bold tracking-widest text-white">
+                        NEW
+                      </span>
+                    )}
                   </div>
 
                   {/* Card body */}
@@ -154,7 +156,8 @@ export function PropertyMatches({ client }: Props) {
                     </p>
                   </div>
                 </Link>
-              ))}
+              );
+              })}
             </div>
 
             {/* View all link */}

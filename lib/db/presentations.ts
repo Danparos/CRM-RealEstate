@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 export interface Presentation {
   id: string;
@@ -46,7 +46,7 @@ function toPresentation(row: Record<string, unknown>): Presentation {
 
 export async function createPresentation(data: Omit<Presentation, "id" | "token" | "createdAt">): Promise<Presentation | null> {
   try {
-    const { data: row, error } = await supabase
+    const { data: row, error } = await createClient()
       .from("property_presentations")
       .insert({
         property_id:    data.propertyId,
@@ -73,7 +73,7 @@ export async function createPresentation(data: Omit<Presentation, "id" | "token"
 
 export async function getPresentationByToken(token: string): Promise<Presentation | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("property_presentations")
       .select("*")
       .eq("token", token)
@@ -88,7 +88,7 @@ export async function getPresentationByToken(token: string): Promise<Presentatio
 
 export async function markOpened(token: string): Promise<void> {
   try {
-    await supabase
+    await createClient()
       .from("property_presentations")
       .update({ opened_at: new Date().toISOString() })
       .eq("token", token)
@@ -98,7 +98,7 @@ export async function markOpened(token: string): Promise<void> {
 
 export async function acceptPresentation(token: string, name: string, ip?: string): Promise<boolean> {
   try {
-    const { error } = await supabase
+    const { error } = await createClient()
       .from("property_presentations")
       .update({
         accepted_at:   new Date().toISOString(),
@@ -116,7 +116,7 @@ export async function acceptPresentation(token: string, name: string, ip?: strin
 
 export async function getPresentationsByProperty(propertyId: string): Promise<Presentation[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("property_presentations")
       .select("*")
       .eq("property_id", propertyId)

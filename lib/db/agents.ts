@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import type { Agent, UserRole } from "@/types";
 
 function toAgent(row: Record<string, unknown>): Agent {
@@ -15,31 +15,44 @@ function toAgent(row: Record<string, unknown>): Agent {
 }
 
 export async function getAllAgents(): Promise<Agent[]> {
-  const { data, error } = await supabase
-    .from("agents")
-    .select("*")
-    .order("name");
-  if (error) throw error;
-  return (data ?? []).map(toAgent);
+  try {
+    const { data, error } = await createClient()
+      .from("agents")
+      .select("*")
+      .order("name");
+    if (error) { console.error("[db/agents] getAllAgents:", error.message); return []; }
+    return (data ?? []).map(toAgent);
+  } catch (err) {
+    console.error("[db/agents] getAllAgents unexpected:", err);
+    return [];
+  }
 }
 
 export async function upsertAgent(a: Agent): Promise<void> {
-  const { error } = await supabase.from("agents").upsert({
-    id:         a.id,
-    name:       a.name,
-    email:      a.email,
-    phone:      a.phone      ?? null,
-    role:       a.role,
-    languages:  a.languages  ?? [],
-    active:     a.active     ?? true,
-    created_at: a.createdAt  ?? new Date().toISOString(),
-  }, { onConflict: "id" });
-  if (error) throw error;
+  try {
+    const { error } = await createClient().from("agents").upsert({
+      id:         a.id,
+      name:       a.name,
+      email:      a.email,
+      phone:      a.phone      ?? null,
+      role:       a.role,
+      languages:  a.languages  ?? [],
+      active:     a.active     ?? true,
+      created_at: a.createdAt  ?? new Date().toISOString(),
+    }, { onConflict: "id" });
+    if (error) console.error("[db/agents] upsertAgent:", error.message);
+  } catch (err) {
+    console.error("[db/agents] upsertAgent unexpected:", err);
+  }
 }
 
 export async function deleteAgent(id: string): Promise<void> {
-  const { error } = await supabase.from("agents").delete().eq("id", id);
-  if (error) throw error;
+  try {
+    const { error } = await createClient().from("agents").delete().eq("id", id);
+    if (error) console.error("[db/agents] deleteAgent:", error.message);
+  } catch (err) {
+    console.error("[db/agents] deleteAgent unexpected:", err);
+  }
 }
 
 export function nextAgentId(agents: Agent[]): string {

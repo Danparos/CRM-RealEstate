@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import type { Task } from "@/types";
 
 // ─── Row → Task ───────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ function toRow(t: Task): Record<string, unknown> {
 
 export async function getAllTasks(): Promise<Task[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("tasks")
       .select("*")
       .order("created_at", { ascending: false });
@@ -50,15 +50,19 @@ export async function getAllTasks(): Promise<Task[]> {
 }
 
 export async function upsertTask(t: Task): Promise<void> {
-  const { error } = await supabase
-    .from("tasks")
-    .upsert(toRow(t), { onConflict: "id" });
-  if (error) throw new Error(error.message);
+  try {
+    const { error } = await createClient()
+      .from("tasks")
+      .upsert(toRow(t), { onConflict: "id" });
+    if (error) console.error("[db/tasks] upsertTask:", error.message);
+  } catch (err) {
+    console.error("[db/tasks] upsertTask unexpected:", err);
+  }
 }
 
 export async function deleteTask(id: string): Promise<void> {
   try {
-    const { error } = await supabase
+    const { error } = await createClient()
       .from("tasks")
       .delete()
       .eq("id", id);

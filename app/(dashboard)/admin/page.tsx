@@ -1,5 +1,6 @@
 import { AgentsClient } from "@/components/admin/agents-client";
 import { PermissionsMatrix } from "@/components/admin/permissions-matrix";
+import { ClientReassignment } from "@/components/admin/client-reassignment";
 
 export default function AdminPage() {
   return (
@@ -18,6 +19,11 @@ export default function AdminPage() {
       <section>
         <h2 className="font-serif text-2xl font-semibold text-stone-900 mb-4">Agents</h2>
         <AgentsClient />
+      </section>
+
+      <section>
+        <h2 className="font-serif text-2xl font-semibold text-stone-900 mb-4">Client Reassignment</h2>
+        <ClientReassignment />
       </section>
 
       <section>

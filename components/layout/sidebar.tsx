@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, Building2, GitMerge, CalendarDays, BarChart3, ShieldCheck, CheckSquare, ChevronLeft, ChevronRight, LogOut, FileText } from "lucide-react";
+import { LayoutDashboard, Users, Building2, GitMerge, CalendarDays, BarChart3, ShieldCheck, CheckSquare, ChevronLeft, ChevronRight, LogOut, FileText, FileSignature, Users2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
@@ -23,6 +23,13 @@ const NAV_SECTIONS = [
       { label: "Marketing",  icon: FileText,        href: "/marketing"  },
       { label: "Tasks",      icon: CheckSquare,     href: "/tasks"      },
       { label: "Reports",    icon: BarChart3,       href: "/reports"    },
+    ],
+  },
+  {
+    label: "Deal Room",
+    items: [
+      { label: "Transactions", icon: FileSignature,   href: "/contracts"  },
+      { label: "Contacts",     icon: Users2,          href: "/contacts"   },
     ],
   },
   {

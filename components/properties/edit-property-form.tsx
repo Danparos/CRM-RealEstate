@@ -26,9 +26,15 @@ const TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
 ];
 
 const STATUS_OPTIONS: { value: PropertyStatus; label: string }[] = [
-  { value: "available",   label: "Available"   },
-  { value: "under_offer", label: "Under Offer" },
-  { value: "sold",        label: "Sold"        },
+  { value: "draft",          label: "Draft"          },
+  { value: "available",      label: "Available"      },
+  { value: "on_hold",        label: "On Hold"        },
+  { value: "under_offer",    label: "Under Offer"    },
+  { value: "under_contract", label: "Under Contract" },
+  { value: "sold",           label: "Sold"           },
+  { value: "rented",         label: "Rented"         },
+  { value: "withdrawn",      label: "Withdrawn"      },
+  { value: "archived",       label: "Archived"       },
 ];
 
 const CONDITION_OPTIONS: { value: PropertyCondition; label: string }[] = [
@@ -188,6 +194,9 @@ export function EditPropertyForm({ property, onSuccess, onCancel }: Props) {
       keysAvailable:        form.keysAvailable,
       type:            form.type as PropertyType,
       status:          form.status as PropertyStatus,
+      availableSince:  form.status === "available" && !property.availableSince
+                         ? new Date().toISOString()
+                         : property.availableSince,
       usage:           form.usage as PropertyUsage,
       marketingMethod: form.marketingMethod as MarketingMethod,
       contractType:    form.contractType as ContractType,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Mail, Phone, Globe, Trash2, X } from "lucide-react";
+import { Plus, Pencil, Mail, Phone, Globe, Trash2, X, Send, Loader2, CheckCircle, Link, Copy } from "lucide-react";
 import type { Agent } from "@/types";
 import { ROLE_CONFIG } from "@/lib/agents-config";
 import { getAllAgents, upsertAgent, deleteAgent, nextAgentId } from "@/lib/db/agents";
@@ -11,11 +11,32 @@ function initials(name: string) {
   return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
+type InviteState = "idle" | "sending" | "sent" | "error";
+
 export function AgentsClient() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [editAgent, setEditAgent] = useState<Agent | null | "new">(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [inviteStates, setInviteStates] = useState<Record<string, InviteState>>({});
+
+  const sendInvite = async (agent: Agent) => {
+    setInviteStates(s => ({ ...s, [agent.id]: "sending" }));
+    try {
+      const res = await fetch("/api/admin/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: agent.email, name: agent.name, role: agent.role }),
+      });
+      const json = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(json.error ?? "Failed");
+      setInviteStates(s => ({ ...s, [agent.id]: "sent" }));
+      setTimeout(() => setInviteStates(s => ({ ...s, [agent.id]: "idle" })), 3000);
+    } catch {
+      setInviteStates(s => ({ ...s, [agent.id]: "error" }));
+      setTimeout(() => setInviteStates(s => ({ ...s, [agent.id]: "idle" })), 3000);
+    }
+  };
 
   useEffect(() => {
     getAllAgents().then(setAgents).finally(() => setLoading(false));
@@ -32,6 +53,16 @@ export function AgentsClient() {
     await deleteAgent(id);
     setAgents(agents.filter(a => a.id !== id));
     setDeleteConfirm(null);
+  };
+
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyLeadLink = (agent: Agent) => {
+    const base = typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${base}/lead?agent=${agent.id}&agentName=${encodeURIComponent(agent.name)}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(agent.id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const roleCounts = agents.reduce<Record<string, number>>((acc, a) => {
@@ -116,6 +147,35 @@ export function AgentsClient() {
                     className="p-1.5 rounded-lg text-stone-300 hover:text-red-500 hover:bg-red-50 transition-colors">
                     <Trash2 size={13} strokeWidth={2} />
                   </button>
+                  {/* Copy lead link */}
+                  <button
+                    onClick={() => copyLeadLink(agent)}
+                    title="Copy personal lead capture link"
+                    className="p-1.5 rounded-lg text-stone-300 hover:text-[#B8960C] hover:bg-[#B8960C]/5 transition-colors"
+                  >
+                    {copiedId === agent.id ? <CheckCircle size={13} className="text-green-500" /> : <Link size={13} strokeWidth={2} />}
+                  </button>
+                  {/* Invite button */}
+                  {(() => {
+                    const state = inviteStates[agent.id] ?? "idle";
+                    return (
+                      <button
+                        onClick={() => sendInvite(agent)}
+                        disabled={state === "sending" || state === "sent"}
+                        title={state === "sent" ? "Invite sent!" : state === "error" ? "Failed — try again" : "Send invite email"}
+                        className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-semibold transition-colors ${
+                          state === "sent" ? "bg-green-500 text-white" :
+                          state === "error" ? "bg-red-500 text-white" :
+                          "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                        }`}
+                      >
+                        {state === "sending" && <Loader2 size={11} className="animate-spin" />}
+                        {state === "sent" && <CheckCircle size={11} />}
+                        {(state === "idle" || state === "error") && <Send size={11} strokeWidth={2} />}
+                        {state === "sending" ? "Sending…" : state === "sent" ? "Sent!" : state === "error" ? "Error" : "Invite"}
+                      </button>
+                    );
+                  })()}
                   <button onClick={() => setEditAgent(agent)}
                     className="inline-flex items-center gap-1.5 h-7 px-3 rounded-lg bg-[#B8960C] text-white text-xs font-semibold hover:bg-[#9e7f0a] transition-colors">
                     <Pencil size={11} strokeWidth={2} /> Edit

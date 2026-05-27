@@ -14,6 +14,7 @@ const STATUS_LABELS: Partial<Record<PropertyStatus, string>> = {
   under_contract: "Under Contract",
   sold:           "Sold",
   off_market:     "Off Market",
+  on_hold:        "On Hold",
   draft:          "Draft",
   rented:         "Rented",
   withdrawn:      "Withdrawn",
@@ -24,6 +25,8 @@ const TABS: { label: string; value?: string }[] = [
   { label: "All" },
   { label: "Available",   value: "available"   },
   { label: "Under Offer", value: "under_offer" },
+  { label: "On Hold",     value: "on_hold"     },
+  { label: "Draft",       value: "draft"       },
   { label: "Sold",        value: "sold"        },
 ];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Pencil, Waves, Droplets, Mountain, MapPin, Navigation, Check, X, Plus, ChevronUp, ChevronDown, FileDown } from "lucide-react";
@@ -12,7 +12,12 @@ import { formatCurrency } from "@/lib/utils";
 import { AreaSelect } from "@/components/properties/area-select";
 import { getProperty, upsertProperty } from "@/lib/db/properties";
 import { getPhotosForProperty } from "@/lib/db/photos";
-import type { Property, PropertyStatus, PropertyType } from "@/types";
+import { getActivitiesForProperty, createActivity } from "@/lib/db/activities";
+import { getAllAgents } from "@/lib/db/agents";
+import { createClient } from "@/lib/supabase/client";
+import type { Property, PropertyStatus, PropertyType, Activity } from "@/types";
+import { DocumentsSection } from "@/components/documents/documents-section";
+import { ActivityTimeline } from "@/components/clients/activity-timeline";
 
 const PropertyPhotoGallery = dynamic(
   () => import("@/components/properties/property-photo-gallery").then(m => ({ default: m.PropertyPhotoGallery })),
@@ -25,6 +30,7 @@ const STATUS_CONFIG: Record<PropertyStatus, { label: string; dotClass: string; b
   under_contract: { label: "Under Contract", dotClass: "bg-orange-400",  badgeClass: "bg-orange-50   text-orange-700   border-orange-200"   },
   sold:           { label: "Sold",           dotClass: "bg-stone-400",   badgeClass: "bg-stone-100   text-stone-600    border-stone-300"    },
   off_market:     { label: "Off Market",     dotClass: "bg-slate-400",   badgeClass: "bg-slate-50    text-slate-600    border-slate-300"    },
+  on_hold:        { label: "On Hold",        dotClass: "bg-amber-400",   badgeClass: "bg-amber-50    text-amber-700    border-amber-200"    },
   draft:          { label: "Draft",          dotClass: "bg-gray-300",    badgeClass: "bg-gray-50     text-gray-500     border-gray-200"     },
   rented:         { label: "Rented",         dotClass: "bg-sky-400",     badgeClass: "bg-sky-50      text-sky-700      border-sky-200"      },
   withdrawn:      { label: "Withdrawn",      dotClass: "bg-red-400",     badgeClass: "bg-red-50      text-red-600      border-red-200"      },
@@ -118,6 +124,8 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
   const [pdfPhotos, setPdfPhotos] = useState<string[]>([]);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [currentAgentName, setCurrentAgentName] = useState<string>("");
 
   useEffect(() => {
     getProperty(initial.id).then(override => {
@@ -128,6 +136,20 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
   useEffect(() => {
     getPhotosForProperty(initial.id).then(setPdfPhotos);
   }, [initial.id]);
+
+  useEffect(() => {
+    getActivitiesForProperty(initial.id).then(setActivities);
+  }, [initial.id]);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await createClient().auth.getUser();
+      if (!user) return;
+      const agents = await getAllAgents();
+      const match = agents.find(a => a.email === user.email);
+      setCurrentAgentName(match?.name ?? user.email ?? "Agent");
+    })();
+  }, []);
 
   const handleDownloadPDF = async () => {
     setPdfLoading(true);
@@ -152,10 +174,34 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
     }
   };
 
+  const logActivity = useCallback((note: string, type: Activity["type"] = "note") => {
+    const agentName = currentAgentName || "Agent";
+    createActivity({ propertyId: initial.id, type, note, agentName })
+      .then(a => { if (a) setActivities(prev => [a, ...prev]); });
+  }, [currentAgentName, initial.id]);
+
   const handleSave = (updated: Property) => {
     upsertProperty(updated).catch(err => console.error("[PropertyDetail] handleSave:", err));
+    if (updated.status !== property.status) {
+      const cfg = STATUS_CONFIG[updated.status];
+      logActivity(`Status changed to ${cfg?.label ?? updated.status}`, "stage_change");
+    } else {
+      logActivity("Property details updated");
+    }
     setProperty(updated);
     setEditing(false);
+  };
+
+  const saveSection = () => {
+    upsertProperty(draft).catch(err => console.error("[PropertyDetail] saveSection:", err));
+    if (draft.status !== property.status) {
+      const cfg = STATUS_CONFIG[draft.status];
+      logActivity(`Status changed to ${cfg?.label ?? draft.status}`, "stage_change");
+    } else {
+      logActivity("Property details updated");
+    }
+    setProperty(draft);
+    setEditingSection(null);
   };
 
   const startEdit = (section: string) => {
@@ -169,12 +215,6 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
   };
 
   const cancelEdit = () => setEditingSection(null);
-
-  const saveSection = () => {
-    upsertProperty(draft).catch(err => console.error("[PropertyDetail] saveSection:", err));
-    setProperty(draft);
-    setEditingSection(null);
-  };
 
   const setD = (updates: Partial<Property>) =>
     setDraft(prev => ({ ...prev, ...updates }));
@@ -226,6 +266,11 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
             <span className={`h-2 w-2 rounded-full shrink-0 ${statusCfg.dotClass}`} />
             {statusCfg.label}
           </span>
+          {property.createdAt && (
+            <span className="text-[11px] text-stone-400">
+              Added {new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(property.createdAt))}
+            </span>
+          )}
           <button
             onClick={handleDownloadPDF}
             disabled={pdfLoading}
@@ -866,6 +911,23 @@ export function PropertyDetail({ property: initial }: { property: Property }) {
           {/* Potential Buyers */}
           <PotentialBuyers property={property} />
 
+        </div>
+      </div>
+
+      {/* ── Documents ── */}
+      <DocumentsSection
+        entityType="property"
+        entityId={property.id}
+        onActivity={note => logActivity(note, "document")}
+      />
+
+      {/* ── Activity History ── */}
+      <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-stone-100">
+          <h2 className="font-serif text-xl font-bold text-stone-900">Activity History</h2>
+        </div>
+        <div className="px-6 py-4">
+          <ActivityTimeline activities={activities} />
         </div>
       </div>
 

@@ -19,6 +19,7 @@ const STATUS_CONFIG: Record<PropertyStatus, { label: string; dotClass: string; b
   under_contract: { label: "Under Contract", dotClass: "bg-orange-400",  badgeClass: "bg-orange-50   text-orange-700   border-orange-200"   },
   sold:           { label: "Sold",           dotClass: "bg-stone-400",   badgeClass: "bg-stone-100   text-stone-600    border-stone-300"    },
   off_market:     { label: "Off Market",     dotClass: "bg-slate-400",   badgeClass: "bg-slate-50    text-slate-600    border-slate-300"    },
+  on_hold:        { label: "On Hold",        dotClass: "bg-amber-400",   badgeClass: "bg-amber-50    text-amber-700    border-amber-200"    },
   draft:          { label: "Draft",          dotClass: "bg-gray-300",    badgeClass: "bg-gray-50     text-gray-500     border-gray-200"     },
   rented:         { label: "Rented",         dotClass: "bg-sky-400",     badgeClass: "bg-sky-50      text-sky-700      border-sky-200"      },
   withdrawn:      { label: "Withdrawn",      dotClass: "bg-red-400",     badgeClass: "bg-red-50      text-red-600      border-red-200"      },
@@ -63,9 +64,16 @@ interface Props {
   statusFilter?: PropertyStatus;
 }
 
+function isNewListing(property: Property): boolean {
+  if (property.status !== "available" || !property.availableSince) return false;
+  const days = (Date.now() - new Date(property.availableSince).getTime()) / 86_400_000;
+  return days <= 30;
+}
+
 function PropertyCard({ property }: { property: Property }) {
   const statusCfg = STATUS_CONFIG[property.status] ?? STATUS_CONFIG.draft;
   const typeLabel = TYPE_LABELS[property.type] ?? property.type;
+  const isNew = isNewListing(property);
   return (
     <Link href={`/properties/${property.id}`}
       className="relative flex flex-col rounded-xl bg-white border border-stone-200 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-150 ease-out overflow-hidden group">
@@ -79,6 +87,11 @@ function PropertyCard({ property }: { property: Property }) {
         <span className="absolute top-3 left-3 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-widest bg-[#B8960C] text-white shadow-sm">
           {property.reference}
         </span>
+        {isNew && (
+          <span className="absolute top-3 left-3 mt-6 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-widest bg-emerald-500 text-white shadow-sm">
+            NEW
+          </span>
+        )}
         <div className="absolute top-3 right-3 flex items-center gap-1.5">
           {property.seafront && <span title="Seafront" className="flex items-center justify-center h-6 w-6 rounded-full bg-sky-500/90 shadow-sm"><Waves size={13} strokeWidth={2} className="text-white" /></span>}
           {property.pool && <span title="Pool" className="flex items-center justify-center h-6 w-6 rounded-full bg-[#B8960C]/90 shadow-sm"><Droplets size={13} strokeWidth={2} className="text-white" /></span>}

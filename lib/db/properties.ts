@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import type { Property } from "@/types";
 
 // ─── Row → Property ──────────────────────────────────────────────────────────
@@ -7,8 +7,9 @@ function toProperty(row: Record<string, unknown>): Property {
     id:          row.id as string,
     reference:   row.reference as string,
     title:       (row.title as Record<string, string>) ?? {},
-    type:        row.type as Property["type"],
-    status:      row.status as Property["status"],
+    type:           row.type as Property["type"],
+    status:         row.status as Property["status"],
+    availableSince: row.available_since as string | undefined,
 
     // Admin
     ownershipGroup:       row.ownership_group as string | undefined,
@@ -64,17 +65,19 @@ function toProperty(row: Record<string, unknown>): Property {
     comments:       row.comments as string | undefined,
     legalChecklist: row.legal_checklist as { label: string; checked: boolean }[] | undefined,
     coverImage:     row.cover_image as string | undefined,
+    createdAt:      row.created_at as string | undefined,
   };
 }
 
 // ─── Property → Row ──────────────────────────────────────────────────────────
 function toRow(p: Property): Record<string, unknown> {
   return {
-    id:        p.id,
-    reference: p.reference,
-    title:     p.title,
-    type:      p.type,
-    status:    p.status,
+    id:              p.id,
+    reference:       p.reference,
+    title:           p.title,
+    type:            p.type,
+    status:          p.status,
+    available_since: p.availableSince ?? null,
 
     ownership_group:       p.ownershipGroup       ?? null,
     agent_id:              p.agentId,
@@ -131,7 +134,7 @@ function toRow(p: Property): Record<string, unknown> {
 
 export async function getAllProperties(): Promise<Property[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("properties")
       .select("*")
       .order("reference", { ascending: true });
@@ -145,7 +148,7 @@ export async function getAllProperties(): Promise<Property[]> {
 
 export async function getProperty(id: string): Promise<Property | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("properties")
       .select("*")
       .eq("id", id)
@@ -160,7 +163,7 @@ export async function getProperty(id: string): Promise<Property | null> {
 
 export async function getPropertyByReference(reference: string): Promise<Property | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("properties")
       .select("*")
       .eq("reference", reference)
@@ -175,7 +178,7 @@ export async function getPropertyByReference(reference: string): Promise<Propert
 
 export async function upsertProperty(p: Property): Promise<void> {
   try {
-    const { error } = await supabase
+    const { error } = await createClient()
       .from("properties")
       .upsert(toRow(p), { onConflict: "id" });
     if (error) console.error("[db/properties] upsertProperty:", error.message);
@@ -187,7 +190,7 @@ export async function upsertProperty(p: Property): Promise<void> {
 /** Returns the next reference string, e.g. "EK-013" */
 export async function getNextReference(): Promise<string> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("properties")
       .select("reference");
     if (error) { console.error("[db/properties] getNextReference:", error.message); return "EK-001"; }

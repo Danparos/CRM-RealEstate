@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import type { Client } from "@/types";
 
 // ─── Row → Client ─────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ function toRow(c: Client): Record<string, unknown> {
 
 export async function getAllClients(): Promise<Client[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("clients")
       .select("*")
       .order("created_at", { ascending: false });
@@ -100,7 +100,7 @@ export async function getAllClients(): Promise<Client[]> {
 
 export async function getClient(id: string): Promise<Client | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("clients")
       .select("*")
       .eq("id", id)
@@ -115,7 +115,7 @@ export async function getClient(id: string): Promise<Client | null> {
 
 export async function upsertClient(c: Client): Promise<void> {
   try {
-    const { error } = await supabase
+    const { error } = await createClient()
       .from("clients")
       .upsert(toRow(c), { onConflict: "id" });
     if (error) console.error("[db/clients] upsertClient:", error.message);
@@ -136,7 +136,7 @@ export async function updateClientStage(
 ): Promise<void> {
   const now = new Date().toISOString();
   try {
-    const { error } = await supabase
+    const { error } = await createClient()
       .from("clients")
       .update({
         stage:              newStage,
@@ -149,5 +149,41 @@ export async function updateClientStage(
     if (error) console.error("[db/clients] updateClientStage:", error.message);
   } catch (err) {
     console.error("[db/clients] updateClientStage unexpected:", err);
+  }
+}
+
+export async function getClientsByAgent(agentId: string): Promise<Client[]> {
+  try {
+    const { data, error } = await createClient()
+      .from("clients")
+      .select("*")
+      .eq("primary_agent_id", agentId)
+      .order("last_name", { ascending: true });
+    if (error) { console.error("[db/clients] getClientsByAgent:", error.message); return []; }
+    return (data ?? []).map(toClient);
+  } catch (err) {
+    console.error("[db/clients] getClientsByAgent unexpected:", err);
+    return [];
+  }
+}
+
+export async function reassignClients(
+  clientIds: string[],
+  toAgentId: string,
+  toAgentName: string,
+): Promise<void> {
+  if (clientIds.length === 0) return;
+  try {
+    const { error } = await createClient()
+      .from("clients")
+      .update({
+        primary_agent_id: toAgentId,
+        primary_agent: toAgentName,
+        updated_at: new Date().toISOString(),
+      })
+      .in("id", clientIds);
+    if (error) console.error("[db/clients] reassignClients:", error.message);
+  } catch (err) {
+    console.error("[db/clients] reassignClients unexpected:", err);
   }
 }

@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
  */
 export async function getPhotosForProperty(propertyId: string): Promise<string[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("property_photos")
       .select("url")
       .eq("property_id", propertyId)
@@ -27,7 +27,7 @@ export async function getPhotosForProperty(propertyId: string): Promise<string[]
 export async function savePhotosForProperty(propertyId: string, urls: string[]): Promise<void> {
   try {
     // Delete existing
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await createClient()
       .from("property_photos")
       .delete()
       .eq("property_id", propertyId);
@@ -45,7 +45,7 @@ export async function savePhotosForProperty(propertyId: string, urls: string[]):
       position: idx,
     }));
 
-    const { error: insertError } = await supabase
+    const { error: insertError } = await createClient()
       .from("property_photos")
       .insert(rows);
     if (insertError) {
