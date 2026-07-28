@@ -50,7 +50,15 @@ export interface Contract {
   completionDate?: string;
   // Status
   stage: "legal_process" | "signed_closed";
+  vendorId?: string;
   agentName?: string;
+  agentId?: string;
+  coAgentId?: string;
+  coAgentName?: string;
+  agentSplitPercent?: number;
+  commissionStatus?: "pending" | "invoiced" | "received";
+  commissionReceivedAt?: string;
+  invoiceNumber?: string;
   notes?: string;
   followUpItems: FollowUpItem[];
   createdAt: string;
@@ -93,7 +101,15 @@ function toContract(row: Record<string, unknown>): Contract {
     finalContractDate: row.final_contract_date as string | undefined,
     completionDate:   row.completion_date as string | undefined,
     stage:            (row.stage as Contract["stage"]) ?? "legal_process",
+    vendorId:         row.vendor_id as string | undefined,
     agentName:        row.agent_name as string | undefined,
+    agentId:          row.agent_id as string | undefined,
+    coAgentId:        row.co_agent_id as string | undefined,
+    coAgentName:      row.co_agent_name as string | undefined,
+    agentSplitPercent: row.agent_split_percent as number | undefined,
+    commissionStatus: (row.commission_status as Contract["commissionStatus"]) ?? "pending",
+    commissionReceivedAt: row.commission_received_at as string | undefined,
+    invoiceNumber:    row.invoice_number as string | undefined,
     notes:            row.notes as string | undefined,
     followUpItems:    (row.follow_up_items as FollowUpItem[]) ?? [],
     createdAt:        row.created_at as string,
@@ -138,7 +154,15 @@ function toRow(data: ContractInput) {
     final_contract_date: data.finalContractDate ?? null,
     completion_date:    data.completionDate ?? null,
     stage:              data.stage,
+    vendor_id:          data.vendorId ?? null,
     agent_name:         data.agentName ?? null,
+    agent_id:           data.agentId ?? null,
+    co_agent_id:        data.coAgentId ?? null,
+    co_agent_name:      data.coAgentName ?? null,
+    agent_split_percent: data.agentSplitPercent ?? 100,
+    commission_status:  data.commissionStatus ?? "pending",
+    commission_received_at: data.commissionReceivedAt ?? null,
+    invoice_number:     data.invoiceNumber ?? null,
     notes:              data.notes ?? null,
     follow_up_items:    data.followUpItems ?? [],
     updated_at:         new Date().toISOString(),

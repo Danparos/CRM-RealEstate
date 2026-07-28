@@ -7,7 +7,8 @@ import { ArrowLeft, Save, Plus, Trash2, Check, ChevronDown, ChevronUp } from "lu
 import { getContract, updateContract, deleteContract } from "@/lib/db/contracts";
 import type { Contract, FollowUpItem } from "@/lib/db/contracts";
 import { getAllAgents } from "@/lib/db/agents";
-import type { Agent } from "@/types";
+import { getAllVendors } from "@/lib/db/vendors";
+import type { Agent, Vendor } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import ContactPicker from "@/components/ui/contact-picker";
@@ -64,15 +65,20 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
   const [loading,  setLoading]  = useState(true);
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
-  const [sections, setSections] = useState({ buyer: true, seller: true, property: true, financial: true, dates: true, followup: true, notes: true });
+  const [sections, setSections] = useState({ buyer: true, seller: true, property: true, financial: true, commission: true, dates: true, followup: true, notes: true });
   const [newFollowUp, setNewFollowUp] = useState("");
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [agents,  setAgents]  = useState<Agent[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     getContract(params.id).then(c => { setContract(c); setLoading(false); });
   }, [params.id]);
+
+  useEffect(() => {
+    getAllVendors().then(setVendors);
+  }, []);
 
   useEffect(() => {
     async function loadAgents() {
@@ -246,6 +252,34 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
       {/* ── Seller ── */}
       <Section title="Seller" open={sections.seller} onToggle={() => toggleSection("seller")}>
         <div className="pt-4 grid grid-cols-2 gap-4">
+          {/* Vendor link — auto-fills seller fields */}
+          <div className="col-span-2">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-1.5">
+              Link to Vendor Record
+            </label>
+            <select
+              value={contract.vendorId ?? ""}
+              onChange={e => {
+                const v = vendors.find(vn => vn.id === e.target.value);
+                if (v) {
+                  update({
+                    vendorId:   v.id,
+                    sellerName:  `${v.firstName} ${v.lastName}`,
+                    sellerEmail: v.email,
+                    sellerPhone: v.phone,
+                  });
+                } else {
+                  update({ vendorId: undefined });
+                }
+              }}
+              className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#B8960C]/40 w-full bg-white"
+            >
+              <option value="">— Select vendor (auto-fills below) —</option>
+              {vendors.map(v => (
+                <option key={v.id} value={v.id}>{v.firstName} {v.lastName}{v.propertyRef ? ` · ${v.propertyRef}` : ""}</option>
+              ))}
+            </select>
+          </div>
           <Field label="Full Name">
             <Input value={contract.sellerName ?? ""} onChange={v => update({ sellerName: v })} placeholder="Seller full name" />
           </Field>
@@ -367,6 +401,101 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
             </div>
           );
         })()}
+      </Section>
+
+      {/* ── Commission Tracking ── */}
+      <Section title="Commission Tracking" open={sections.commission} onToggle={() => toggleSection("commission")}>
+        <div className="pt-4 space-y-4">
+          {/* Status + Invoice */}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Commission Status">
+              <select
+                value={contract.commissionStatus ?? "pending"}
+                onChange={e => update({ commissionStatus: e.target.value as Contract["commissionStatus"] })}
+                className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#B8960C]/40 w-full bg-white"
+              >
+                <option value="pending">Pending</option>
+                <option value="invoiced">Invoiced</option>
+                <option value="received">Received</option>
+              </select>
+            </Field>
+            <Field label="Invoice Number">
+              <Input value={contract.invoiceNumber ?? ""} onChange={v => update({ invoiceNumber: v })} placeholder="INV-2026-001" />
+            </Field>
+          </div>
+
+          {/* Agent split + Co-agent */}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Agent Split (% to primary agent)">
+              <Input
+                value={contract.agentSplitPercent?.toString() ?? "100"}
+                onChange={v => update({ agentSplitPercent: v ? Number(v) : 100 })}
+                placeholder="100"
+                type="number"
+              />
+            </Field>
+            <Field label="Co-Agent">
+              {isAdmin ? (
+                <select
+                  value={contract.coAgentId ?? ""}
+                  onChange={e => {
+                    const a = agents.find(ag => ag.id === e.target.value);
+                    update({ coAgentId: e.target.value || undefined, coAgentName: a?.name });
+                  }}
+                  className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm text-stone-800 focus:outline-none focus:ring-1 focus:ring-[#B8960C]/40 w-full bg-white"
+                >
+                  <option value="">— No co-agent —</option>
+                  {agents.filter(a => a.id !== (agents.find(ag => ag.name === contract.agentName)?.id)).map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="rounded-xl border border-stone-100 bg-stone-50 px-3 py-2.5 text-sm text-stone-600">
+                  {contract.coAgentName ?? "—"}
+                </div>
+              )}
+            </Field>
+          </div>
+
+          {/* Commission received date */}
+          {contract.commissionStatus === "received" && (
+            <Field label="Date Received">
+              <Input value={contract.commissionReceivedAt ?? ""} onChange={v => update({ commissionReceivedAt: v })} type="date" />
+            </Field>
+          )}
+
+          {/* Commission breakdown summary */}
+          {(() => {
+            const price   = contract.agreedPrice ?? 0;
+            const buyFee  = price * ((contract.buyerCommission  ?? 0) / 100);
+            const selFee  = price * ((contract.sellerCommission ?? 0) / 100);
+            const total   = buyFee + selFee;
+            const split   = contract.agentSplitPercent ?? 100;
+            const primary = total * (split / 100);
+            const coShare = total * ((100 - split) / 100);
+            const fmt     = (n: number) => "€" + Math.round(n).toLocaleString("de-DE");
+            if (total === 0) return null;
+            return (
+              <div className="rounded-xl border border-[#B8960C]/20 bg-amber-50/60 px-5 py-4 space-y-2">
+                <p className="text-[10px] uppercase tracking-wider font-semibold text-stone-400 mb-1">Commission Breakdown</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-stone-500">Total agency fee</span>
+                  <span className="font-semibold text-stone-700">{fmt(total)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-stone-500">{contract.agentName || "Primary agent"} ({split}%)</span>
+                  <span className="font-bold text-[#B8960C]">{fmt(primary)}</span>
+                </div>
+                {split < 100 && contract.coAgentName && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-stone-500">{contract.coAgentName} ({100 - split}%)</span>
+                    <span className="font-semibold text-stone-600">{fmt(coShare)}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
       </Section>
 
       {/* ── Key Dates ── */}

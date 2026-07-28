@@ -4,6 +4,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { PipelineStageBadge } from "@/components/crm/pipeline-stage-badge";
 import { ClientClassBadge } from "@/components/crm/client-class-badge";
 import { formatCurrency } from "@/lib/utils";
+import { FollowUpReminders } from "@/components/dashboard/follow-up-reminders";
 
 const totalClients  = mockClients.length;
 const pipelineValue = mockClients.reduce((sum, c) => sum + (c.budgetMax ?? 0), 0);
@@ -121,6 +122,9 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Follow-up reminders */}
+      <FollowUpReminders />
 
       {/* Agents + Recent clients */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">

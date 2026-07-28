@@ -30,6 +30,16 @@ export type ActivityType =
   | "viewing" | "offer" | "document" | "note"
   | "stage_change" | "class_change";
 
+export type VendorStage =
+  | "owner_inquiry"
+  | "valuation"
+  | "listing_agreement"
+  | "listed"
+  | "under_offer"
+  | "legal_process"
+  | "sold"
+  | "withdrawn";
+
 export interface Agent {
   id: string;
   name: string;
@@ -81,11 +91,41 @@ export interface Activity {
   id: string;
   clientId?: string;
   propertyId?: string;
+  vendorId?: string;
   type: ActivityType;
   date: string;
   note: string;
   agentName: string;
   metadata?: Record<string, string>;
+}
+
+export interface Vendor {
+  id: string;
+  salutation?: Salutation;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  nationality?: string;
+  language?: string;
+  stage: VendorStage;
+  primaryAgentId?: string;
+  primaryAgent?: string;
+  propertyId?: string;
+  propertyRef?: string;
+  askingPrice?: number;
+  valuationPrice?: number;
+  listingCommission?: number;
+  contractType?: "exclusive" | "open";
+  exclusiveUntil?: string;
+  notes?: string;
+  lastActivityAt?: string;
+  lastActivityNote?: string;
+  stageEnteredAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  archived?: boolean;
+  archivedAt?: string;
 }
 
 export type PropertyCondition = "planned" | "in_good_condition" | "needs_renovation" | "under_construction";
@@ -171,4 +211,5 @@ export interface Property {
 
   coverImage?: string;
   createdAt?: string;
+  vendorId?: string;
 }

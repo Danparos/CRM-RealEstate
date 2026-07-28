@@ -27,6 +27,7 @@ export function PipelinePageClient() {
 
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [loading, setLoading]       = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
 
   const {
@@ -35,7 +36,12 @@ export function PipelinePageClient() {
 
   useEffect(() => {
     getAllClients()
-      .then(setAllClients)
+      .then((clients) => {
+        setAllClients(clients.filter((c) => !c.archived));
+      })
+      .catch((err) => {
+        setFetchError(String(err));
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -73,6 +79,28 @@ export function PipelinePageClient() {
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 rounded-full border-2 border-[#B8960C] border-t-transparent animate-spin" />
           <p className="text-sm text-stone-400">Loading pipeline…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="flex flex-col items-center gap-3 max-w-md text-center">
+          <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <p className="text-sm font-semibold text-stone-700">Failed to load clients</p>
+          <p className="text-xs text-stone-400 font-mono break-all">{fetchError}</p>
+          <button
+            onClick={() => { setFetchError(null); setLoading(true); getAllClients().then((c) => setAllClients(c.filter(x => !x.archived))).catch((e) => setFetchError(String(e))).finally(() => setLoading(false)); }}
+            className="mt-2 px-4 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-sm font-medium text-stone-700 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

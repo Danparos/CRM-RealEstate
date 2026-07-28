@@ -66,6 +66,7 @@ function toProperty(row: Record<string, unknown>): Property {
     legalChecklist: row.legal_checklist as { label: string; checked: boolean }[] | undefined,
     coverImage:     row.cover_image as string | undefined,
     createdAt:      row.created_at as string | undefined,
+    vendorId:       row.vendor_id as string | undefined,
   };
 }
 
@@ -127,6 +128,7 @@ function toRow(p: Property): Record<string, unknown> {
     comments:          p.comments        ?? null,
     legal_checklist:   p.legalChecklist  ?? null,
     cover_image:       p.coverImage      ?? null,
+    vendor_id:         p.vendorId        ?? null,
   };
 }
 

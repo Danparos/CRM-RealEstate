@@ -113,6 +113,15 @@ export function AddPropertyForm() {
   const set = (k: keyof typeof form, v: string | boolean | string[]) =>
     setForm(p => ({ ...p, [k]: v }));
 
+  const [customFeature, setCustomFeature] = useState("");
+
+  const addCustomFeature = () => {
+    const val = customFeature.trim();
+    if (!val || form.features.includes(val)) { setCustomFeature(""); return; }
+    setForm(p => ({ ...p, features: [...p.features, val] }));
+    setCustomFeature("");
+  };
+
   const toggleList = (k: "heatingTypes" | "features", val: string) => {
     setForm(p => {
       const list = p[k] as string[];
@@ -382,6 +391,26 @@ export function AddPropertyForm() {
               {f}
             </label>
           ))}
+          {form.features.filter(f => !FEATURE_OPTIONS.includes(f)).map(f => (
+            <span key={f} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm bg-[#B8960C] border-[#B8960C] text-white">
+              {f}
+              <button type="button" onClick={() => toggleList("features", f)} className="hover:opacity-70 transition-opacity leading-none">×</button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            value={customFeature}
+            onChange={e => setCustomFeature(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addCustomFeature())}
+            placeholder="Add custom feature…"
+            className="flex-1 h-9 rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-800 outline-none focus:border-[#B8960C] focus:ring-2 focus:ring-[#B8960C]/20 transition-all"
+          />
+          <button type="button" onClick={addCustomFeature}
+            className="h-9 px-4 rounded-lg bg-[#B8960C] text-white text-sm font-medium hover:bg-[#9e7f0a] transition-colors">
+            Add
+          </button>
         </div>
         <div className="flex flex-wrap gap-4 pt-2 border-t border-stone-100">
           {([["seafront", "Seafront"], ["seaView", "Sea View"], ["pool", "Pool"]] as const).map(([key, label]) => (

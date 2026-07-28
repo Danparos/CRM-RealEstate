@@ -1,10 +1,9 @@
 import { createClient } from "@/lib/supabase/client";
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+const BUCKET = "property-photos";
 
-/**
- * Returns all photo URLs for a property, ordered by position.
- */
+// ─── Read ─────────────────────────────────────────────────────────────────────
+
 export async function getPhotosForProperty(propertyId: string): Promise<string[]> {
   try {
     const { data, error } = await createClient()
@@ -20,38 +19,106 @@ export async function getPhotosForProperty(propertyId: string): Promise<string[]
   }
 }
 
+// ─── Upload ───────────────────────────────────────────────────────────────────
+
 /**
- * Replaces all photos for a property with the provided URLs (in order).
- * Deletes all existing rows for the property, then inserts the new set.
+ * Uploads a file to Supabase Storage and inserts a row in property_photos.
+ * Returns the public URL of the stored photo.
+ * Throws on any failure.
  */
-export async function savePhotosForProperty(propertyId: string, urls: string[]): Promise<void> {
-  try {
-    // Delete existing
-    const { error: deleteError } = await createClient()
-      .from("property_photos")
-      .delete()
-      .eq("property_id", propertyId);
-    if (deleteError) {
-      console.error("[db/photos] savePhotosForProperty (delete):", deleteError.message);
-      return;
-    }
+export async function uploadPhotoForProperty(
+  propertyId: string,
+  file: File,
+  position: number
+): Promise<string> {
+  const supabase = createClient();
+  const safeName = file.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
+  const path = `${propertyId}/${Date.now()}_${safeName}`;
 
-    if (urls.length === 0) return;
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, { upsert: false, contentType: file.type || "image/jpeg" });
 
-    // Insert new rows with position index
-    const rows = urls.map((url, idx) => ({
-      property_id: propertyId,
-      url,
-      position: idx,
-    }));
+  if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
 
-    const { error: insertError } = await createClient()
-      .from("property_photos")
-      .insert(rows);
-    if (insertError) {
-      console.error("[db/photos] savePhotosForProperty (insert):", insertError.message);
-    }
-  } catch (err) {
-    console.error("[db/photos] savePhotosForProperty unexpected:", err);
+  const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
+
+  const { error: insertError } = await supabase
+    .from("property_photos")
+    .insert({ property_id: propertyId, url: publicUrl, position });
+
+  if (insertError) {
+    // clean up the uploaded file so storage and DB stay in sync
+    await supabase.storage.from(BUCKET).remove([path]);
+    throw new Error(`DB insert failed: ${insertError.message}`);
   }
+
+  return publicUrl;
+}
+
+// ─── Delete ───────────────────────────────────────────────────────────────────
+
+/**
+ * Removes a photo row from the DB.
+ * If the URL points to our Storage bucket, also removes the file.
+ * Throws on failure.
+ */
+export async function deletePhotoForProperty(
+  propertyId: string,
+  url: string
+): Promise<void> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("property_photos")
+    .delete()
+    .eq("property_id", propertyId)
+    .eq("url", url);
+
+  if (error) throw new Error(`Failed to delete photo: ${error.message}`);
+
+  // If it's a Storage URL for our bucket, remove the file too
+  if (url.includes(`/storage/v1/object/public/${BUCKET}/`)) {
+    const path = url.split(`/storage/v1/object/public/${BUCKET}/`)[1];
+    if (path) {
+      await supabase.storage.from(BUCKET).remove([decodeURIComponent(path)]);
+    }
+  }
+}
+
+// ─── Reorder ──────────────────────────────────────────────────────────────────
+
+/**
+ * Updates position values for existing rows to match the given URL order.
+ * Does NOT re-send image data — only updates position integers.
+ * Throws on failure.
+ */
+export async function reorderPhotosForProperty(
+  propertyId: string,
+  urls: string[]
+): Promise<void> {
+  const supabase = createClient();
+
+  // Fetch current rows to get their IDs (we need IDs to update positions)
+  const { data, error } = await supabase
+    .from("property_photos")
+    .select("id, url")
+    .eq("property_id", propertyId);
+
+  if (error) throw new Error(`Failed to fetch photo rows: ${error.message}`);
+
+  const urlToId = new Map((data ?? []).map((r: { id: string; url: string }) => [r.url, r.id]));
+
+  // Upsert with only id + position (no URL resend)
+  const updates = urls
+    .map((url, idx) => ({ id: urlToId.get(url), position: idx }))
+    .filter((u): u is { id: string; position: number } => !!u.id);
+
+  if (updates.length === 0) return;
+
+  const { error: upsertError } = await supabase
+    .from("property_photos")
+    .upsert(updates, { onConflict: "id" });
+
+  if (upsertError) throw new Error(`Failed to reorder photos: ${upsertError.message}`);
 }

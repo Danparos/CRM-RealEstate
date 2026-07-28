@@ -7,6 +7,7 @@ function toActivity(row: Record<string, unknown>): Activity {
     id:         row.id          as string,
     clientId:   row.client_id   as string | undefined,
     propertyId: row.property_id as string | undefined,
+    vendorId:   row.vendor_id   as string | undefined,
     type:       row.type        as Activity["type"],
     date:       row.date        as string,
     note:       row.note        as string,
@@ -61,9 +62,25 @@ export async function getAllActivities(): Promise<Activity[]> {
   }
 }
 
+export async function getActivitiesForVendor(vendorId: string): Promise<Activity[]> {
+  try {
+    const { data, error } = await createClient()
+      .from("activities")
+      .select("*")
+      .eq("vendor_id", vendorId)
+      .order("date", { ascending: false });
+    if (error) { console.error("[db/activities] getActivitiesForVendor:", error.message); return []; }
+    return (data ?? []).map(toActivity);
+  } catch (err) {
+    console.error("[db/activities] getActivitiesForVendor unexpected:", err);
+    return [];
+  }
+}
+
 export async function createActivity(data: {
   clientId?: string;
   propertyId?: string;
+  vendorId?: string;
   type: Activity["type"];
   note: string;
   agentName: string;
@@ -76,6 +93,7 @@ export async function createActivity(data: {
         id:          `act-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         client_id:   data.clientId   ?? null,
         property_id: data.propertyId ?? null,
+        vendor_id:   data.vendorId   ?? null,
         type:        data.type,
         date:        new Date().toISOString(),
         note:        data.note,
