@@ -11,7 +11,7 @@ import { PriceGroupBadge } from "@/components/crm/price-group-badge";
 import { PipelineStageBadge } from "@/components/crm/pipeline-stage-badge";
 import { ActivityTimeline } from "@/components/clients/activity-timeline";
 import { EditClientForm } from "@/components/clients/edit-client-form";
-import { getClient, upsertClient } from "@/lib/db/clients";
+import { getClient, upsertClient, deleteClient, updateClientBlacklisted } from "@/lib/db/clients";
 import { getActivitiesForClient } from "@/lib/db/activities";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { Client, PipelineStage, Activity } from "@/types";
@@ -178,7 +178,10 @@ export function ClientDetail({ client: initialClient }: Props) {
   const [client, setClient] = useState<Client>(initialClient);
   const [showEdit, setShowEdit] = useState(false);
   const [showSend, setShowSend] = useState(false);
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showArchiveConfirm,    setShowArchiveConfirm]    = useState(false);
+  const [showBlacklistConfirm,  setShowBlacklistConfirm]  = useState(false);
+  const [showDeleteConfirm,     setShowDeleteConfirm]      = useState(false);
+  const [deleteInput,           setDeleteInput]            = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalToast, setPortalToast] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -274,6 +277,30 @@ export function ClientDetail({ client: initialClient }: Props) {
     setClient(updated);
   };
 
+  const handleBlacklist = () => {
+    const blacklisted = !client.blacklisted;
+    const updated = {
+      ...client,
+      blacklisted,
+      blacklistedAt: blacklisted ? new Date().toISOString() : undefined,
+      archived: blacklisted ? true : client.archived,
+    };
+    logActivity("note", blacklisted ? "Client blacklisted" : "Client removed from blacklist");
+    updateClientBlacklisted(client.id, blacklisted);
+    setClient(updated);
+    setShowBlacklistConfirm(false);
+    if (blacklisted) router.push("/clients");
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteClient(client.id);
+      router.push("/clients");
+    } catch (err) {
+      console.error("[ClientDetail] delete:", err);
+    }
+  };
+
   const handleGeneratePortal = async () => {
     setPortalLoading(true);
     try {
@@ -329,11 +356,6 @@ export function ClientDetail({ client: initialClient }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {client.archived && (
-              <span className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full text-xs font-semibold bg-stone-100 text-stone-500 border border-stone-200">
-                Archived
-              </span>
-            )}
             <button
               onClick={handleGeneratePortal}
               disabled={portalLoading}
@@ -360,6 +382,17 @@ export function ClientDetail({ client: initialClient }: Props) {
               </svg>
               Edit
             </button>
+            {/* Blacklisted badge */}
+            {client.blacklisted && (
+              <span className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+                ⛔ Blacklisted
+              </span>
+            )}
+            {client.archived && !client.blacklisted && (
+              <span className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full text-xs font-semibold bg-stone-100 text-stone-500 border border-stone-200">
+                Archived
+              </span>
+            )}
             {client.archived ? (
               <button
                 onClick={handleReactivate}
@@ -373,7 +406,7 @@ export function ClientDetail({ client: initialClient }: Props) {
             ) : (
               <button
                 onClick={() => setShowArchiveConfirm(true)}
-                className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg text-sm font-medium border border-stone-200 text-stone-400 hover:border-red-200 hover:text-red-500 transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg text-sm font-medium border border-stone-200 text-stone-400 hover:border-orange-200 hover:text-orange-500 transition-colors"
               >
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
@@ -381,6 +414,28 @@ export function ClientDetail({ client: initialClient }: Props) {
                 Archive
               </button>
             )}
+            {/* Blacklist */}
+            <button
+              onClick={() => setShowBlacklistConfirm(true)}
+              className={`inline-flex items-center gap-1.5 px-4 h-9 rounded-lg text-sm font-medium border transition-colors ${
+                client.blacklisted
+                  ? "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  : "border-stone-200 text-stone-400 hover:border-red-300 hover:text-red-600"
+              }`}
+            >
+              {client.blacklisted ? "Remove from Blacklist" : "Blacklist"}
+            </button>
+            {/* Delete */}
+            <button
+              onClick={() => { setDeleteInput(""); setShowDeleteConfirm(true); }}
+              className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg text-sm font-medium border border-stone-200 text-stone-400 hover:border-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              title="Permanently delete this client"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+              Delete
+            </button>
           </div>
         </div>
       </div>
@@ -623,6 +678,71 @@ export function ClientDetail({ client: initialClient }: Props) {
                 className="flex-1 h-10 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors"
               >
                 Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Blacklist Confirmation */}
+      {showBlacklistConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowBlacklistConfirm(false)} />
+          <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+            <h3 className="font-serif text-lg font-semibold text-stone-900">
+              {client.blacklisted ? "Remove from blacklist?" : "Blacklist client?"}
+            </h3>
+            <p className="text-sm text-stone-500">
+              {client.blacklisted
+                ? `${client.firstName} ${client.lastName} will be reactivated and removed from the blacklist.`
+                : `${client.firstName} ${client.lastName} will be blacklisted and hidden from all active lists.`}
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowBlacklistConfirm(false)}
+                className="flex-1 h-10 rounded-lg border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBlacklist}
+                className="flex-1 h-10 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
+              >
+                {client.blacklisted ? "Remove" : "Blacklist"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
+          <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+            <h3 className="font-serif text-lg font-semibold text-red-700">Delete client permanently?</h3>
+            <p className="text-sm text-stone-500">
+              This cannot be undone. Type <strong>{client.firstName} {client.lastName}</strong> to confirm.
+            </p>
+            <input
+              value={deleteInput}
+              onChange={e => setDeleteInput(e.target.value)}
+              className="w-full h-10 px-3 rounded-lg border border-stone-200 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20 transition-all"
+              placeholder="Type client name…"
+            />
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 h-10 rounded-lg border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteInput !== `${client.firstName} ${client.lastName}`}
+                className="flex-1 h-10 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-40 transition-colors"
+              >
+                Delete Forever
               </button>
             </div>
           </div>

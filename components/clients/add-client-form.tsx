@@ -258,6 +258,8 @@ export function AddClientForm({ onSuccess, onCancel }: AddClientFormProps) {
       };
       await upsertClient(client);
       onSuccess(client.id);
+    } catch (err) {
+      console.error("[AddClientForm] save failed:", err);
     } finally {
       setBusy(false);
     }

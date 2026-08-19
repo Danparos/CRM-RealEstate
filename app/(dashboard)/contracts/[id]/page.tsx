@@ -63,8 +63,9 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
   const router = useRouter();
   const [contract, setContract] = useState<Contract | null>(null);
   const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
-  const [saved,    setSaved]    = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  const [saved,     setSaved]     = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [sections, setSections] = useState({ buyer: true, seller: true, property: true, financial: true, commission: true, dates: true, followup: true, notes: true });
   const [newFollowUp, setNewFollowUp] = useState("");
   const [agents,  setAgents]  = useState<Agent[]>([]);
@@ -109,10 +110,18 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
   async function handleSave() {
     if (!contract) return;
     setSaving(true);
-    await updateContract(contract.id, contract);
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveError(null);
+    try {
+      await updateContract(contract.id, contract);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setSaveError(msg);
+      console.error("[ContractDetail] save failed:", msg);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleDelete() {
@@ -209,6 +218,25 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
           </button>
         </div>
       </div>
+
+      {/* Save error banner */}
+      {saveError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 flex items-start gap-3">
+          <svg className="h-4 w-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-700">Save failed — database error</p>
+            <p className="text-xs text-red-600 mt-0.5 break-all">{saveError}</p>
+            <p className="text-xs text-red-500 mt-1">Run the pending migration SQL files in your Supabase SQL editor, then try again.</p>
+          </div>
+          <button onClick={() => setSaveError(null)} className="text-red-400 hover:text-red-600 shrink-0">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* ── Buyer ── */}
       <Section title="Buyer" open={sections.buyer} onToggle={() => toggleSection("buyer")}>

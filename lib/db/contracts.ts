@@ -200,9 +200,10 @@ export async function getContract(id: string): Promise<Contract | null> {
 
 export async function createContract(data: ContractInput): Promise<Contract | null> {
   try {
+    const id = crypto.randomUUID();
     const { data: row, error } = await createClient()
       .from("contracts")
-      .insert(toRow(data))
+      .insert({ id, ...toRow(data) })
       .select()
       .single();
     if (error) { console.error("[db/contracts] create:", error.message); return null; }
@@ -213,18 +214,12 @@ export async function createContract(data: ContractInput): Promise<Contract | nu
   }
 }
 
-export async function updateContract(id: string, data: ContractInput): Promise<boolean> {
-  try {
-    const { error } = await createClient()
-      .from("contracts")
-      .update(toRow(data))
-      .eq("id", id);
-    if (error) { console.error("[db/contracts] update:", error.message); return false; }
-    return true;
-  } catch (err) {
-    console.error("[db/contracts] update unexpected:", err);
-    return false;
-  }
+export async function updateContract(id: string, data: ContractInput): Promise<void> {
+  const { error } = await createClient()
+    .from("contracts")
+    .update(toRow(data))
+    .eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteContract(id: string): Promise<boolean> {

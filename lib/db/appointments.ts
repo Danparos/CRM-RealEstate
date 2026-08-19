@@ -44,27 +44,22 @@ export async function getAllAppointments(): Promise<Appointment[]> {
 }
 
 export async function createAppointment(data: Omit<Appointment, "id" | "createdAt">): Promise<Appointment | null> {
-  try {
-    const { data: row, error } = await createClient()
-      .from("appointments")
-      .insert({
-        date:        data.date,
-        time:        data.time,
-        type:        data.type,
-        client_name: data.clientName,
-        client_id:   data.clientId ?? null,
-        agent_name:  data.agentName,
-        note:        data.note,
-        location:    data.location ?? null,
-      })
-      .select()
-      .single();
-    if (error) { console.error("[db/appointments] create:", error.message); return null; }
-    return row ? toAppointment(row as Record<string, unknown>) : null;
-  } catch (err) {
-    console.error("[db/appointments] create unexpected:", err);
-    return null;
-  }
+  const { data: row, error } = await createClient()
+    .from("appointments")
+    .insert({
+      date:        data.date,
+      time:        data.time,
+      type:        data.type,
+      client_name: data.clientName,
+      client_id:   data.clientId ?? null,
+      agent_name:  data.agentName,
+      note:        data.note,
+      location:    data.location ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return row ? toAppointment(row as Record<string, unknown>) : null;
 }
 
 export async function updateAppointment(id: string, data: Omit<Appointment, "id" | "createdAt">): Promise<boolean> {

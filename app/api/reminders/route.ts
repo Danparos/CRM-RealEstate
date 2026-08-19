@@ -9,6 +9,8 @@ const FOLLOW_UP_DAYS: Record<string, number> = {
 
 const SKIP_STAGES = new Set(["signed_closed", "archived"]);
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const supabase = createClient();

@@ -23,7 +23,7 @@ const sizeClasses: Record<BadgeSize, string> = {
 }
 
 export function ClientClassBadge({ clientClass, showLabel = false, size = "default" }: ClientClassBadgeProps) {
-  const config = classConfig[clientClass]
+  const config = classConfig[clientClass] ?? classConfig["C"]
   return (
     <span className={cn("inline-flex items-center font-semibold tracking-wide uppercase", config.classes, sizeClasses[size])}>
       <span>{config.label}</span>

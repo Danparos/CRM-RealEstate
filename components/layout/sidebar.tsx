@@ -169,6 +169,21 @@ function SubFilters({
         );
       })()}
 
+      {/* Blacklisted */}
+      {(() => {
+        const isActive = activeStatus === "blacklisted";
+        return (
+          <Link href={`${basePath}?status=blacklisted`} className={cn(
+            "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors",
+            isActive ? "bg-gold-50 text-gold-700" : "text-warm-400 hover:bg-warm-50 hover:text-warm-700"
+          )}>
+            <span className="h-2 w-2 rounded-full shrink-0 bg-red-400" />
+            <span className={cn(isActive ? "text-gold-700" : "text-red-400")}>Blacklisted</span>
+            {isActive && <span className="ml-auto h-1 w-1 rounded-full bg-gold-400" />}
+          </Link>
+        );
+      })()}
+
       <div className="my-1 border-t border-warm-100" />
 
       {STAGE_FILTERS.map(({ label, value, dot, href }) => {

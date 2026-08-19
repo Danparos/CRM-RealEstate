@@ -63,6 +63,7 @@ export default function CalendarPage() {
   const [editing,      setEditing]      = useState<Appointment | null>(null);
   const [form,         setForm]         = useState(EMPTY_FORM);
   const [saving,       setSaving]       = useState(false);
+  const [saveError,    setSaveError]    = useState<string | null>(null);
   const [deleting,     setDeleting]     = useState<string | null>(null);
   const [showPast,     setShowPast]     = useState(false);
 
@@ -112,8 +113,9 @@ export default function CalendarPage() {
   }
 
   async function handleSave() {
-    if (!form.date || !form.time || !form.clientName.trim() || !form.agentName.trim() || !form.note.trim()) return;
+    if (!form.date || !form.time || !form.clientName.trim() || !form.agentName.trim()) return;
     setSaving(true);
+    setSaveError(null);
     const payload = {
       date:       form.date,
       time:       form.time,
@@ -124,15 +126,20 @@ export default function CalendarPage() {
       note:       form.note.trim(),
       location:   form.location.trim() || undefined,
     };
-    if (editing) {
-      const ok = await updateAppointment(editing.id, payload);
-      if (ok) setAppointments(prev => prev.map(a => a.id === editing.id ? { ...editing, ...payload } : a));
-    } else {
-      const created = await createAppointment(payload);
-      if (created) setAppointments(prev => [...prev, created]);
+    try {
+      if (editing) {
+        const ok = await updateAppointment(editing.id, payload);
+        if (ok) setAppointments(prev => prev.map(a => a.id === editing.id ? { ...editing, ...payload } : a));
+      } else {
+        const created = await createAppointment(payload);
+        if (created) setAppointments(prev => [...prev, created]);
+      }
+      closeModal();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    closeModal();
   }
 
   async function handleDelete(id: string) {
@@ -389,7 +396,7 @@ export default function CalendarPage() {
 
               {/* Note */}
               <label className="flex flex-col gap-1.5">
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-stone-400">Notes</span>
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-stone-400">Notes <span className="font-normal normal-case text-stone-300">(optional)</span></span>
                 <textarea
                   rows={3}
                   placeholder="What is this appointment about?"
@@ -400,14 +407,19 @@ export default function CalendarPage() {
               </label>
             </div>
 
+            {saveError && (
+              <div className="mx-6 mb-2 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700 font-medium">
+                Save failed: {saveError}
+              </div>
+            )}
             <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-stone-100 bg-stone-50/50">
               <button onClick={closeModal} className="px-4 py-2 text-[12px] font-semibold text-stone-500 hover:text-stone-700">Cancel</button>
               <button
                 onClick={handleSave}
-                disabled={saving || !form.date || !form.time || !form.clientName.trim() || !form.agentName.trim() || !form.note.trim()}
+                disabled={saving || !form.date || !form.time || !form.clientName.trim() || !form.agentName.trim()}
                 className={cn(
                   "px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all",
-                  !saving && form.date && form.time && form.clientName.trim() && form.agentName.trim() && form.note.trim()
+                  !saving && form.date && form.time && form.clientName.trim() && form.agentName.trim()
                     ? "bg-[#B8960C] text-white hover:bg-[#9a7a0a]"
                     : "bg-stone-200 text-stone-400 cursor-not-allowed"
                 )}

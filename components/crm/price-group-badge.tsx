@@ -24,7 +24,7 @@ const sizeClasses: Record<BadgeSize, string> = {
 }
 
 export function PriceGroupBadge({ group, showRange = false, size = "default" }: PriceGroupBadgeProps) {
-  const config = groupConfig[group]
+  const config = groupConfig[group] ?? groupConfig["entry"]
   return (
     <span className={cn("inline-flex items-center font-semibold tracking-wide", config.classes, sizeClasses[size])}>
       <span>{config.label}</span>

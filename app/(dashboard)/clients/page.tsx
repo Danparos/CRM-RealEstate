@@ -2,9 +2,14 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, X, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
-import { getAllClients } from "@/lib/db/clients";
+import { Plus, Search, X, SlidersHorizontal, ChevronDown, ChevronUp, FileSpreadsheet } from "lucide-react";
+import { getAllClients, deleteClient } from "@/lib/db/clients";
 import { ClientCard } from "@/components/clients/client-card";
+import dynamic from "next/dynamic";
+const ImportClientsModal = dynamic(
+  () => import("@/components/clients/import-clients-modal").then(m => ({ default: m.ImportClientsModal })),
+  { ssr: false }
+);
 import type { Client, ClientClass, PriceGroup } from "@/types";
 
 const VALID: ClientClass[] = ["A", "B", "C"];
@@ -189,7 +194,13 @@ function matchesLookingFor(c: Client, lookingFor: string[]): boolean {
 function applyFilters(clients: Client[], f: Filters): Client[] {
   return clients.filter(c => {
     if (f.clientClass && c.clientClass !== f.clientClass) return false;
-    if (f.stage && c.stage !== f.stage) return false;
+    if (f.stage) {
+      if (f.stage === "active") {
+        if (!["offer_submitted", "negotiation", "legal_process"].includes(c.stage)) return false;
+      } else if (c.stage !== f.stage) {
+        return false;
+      }
+    }
     if (f.priceGroup && c.priceGroup !== f.priceGroup) return false;
     if (f.agent && c.primaryAgent !== f.agent) return false;
     if (!matchesLookingFor(c, f.lookingFor)) return false;
@@ -216,13 +227,17 @@ function Inner() {
   const [loading,       setLoading]       = useState(true);
   const [query,         setQuery]         = useState("");
   const [showPanel,     setShowPanel]     = useState(false);
+  const [showImport,    setShowImport]    = useState(false);
+  const [selected,      setSelected]      = useState<Set<string>>(new Set());
+  const [deleting,      setDeleting]      = useState(false);
   const [filters,       setFilters]       = useState<Filters>(() => ({
     ...EMPTY_FILTERS,
     clientClass: (VALID.includes(sp.get("class") as ClientClass) ? sp.get("class") as ClientClass : "") as ClientClass | "",
     stage: sp.get("stage") ?? "",
   }));
 
-  const showArchived = sp.get("status") === "archived";
+  const showArchived     = sp.get("status") === "archived";
+  const showBlacklisted  = sp.get("status") === "blacklisted";
 
   useEffect(() => {
     getAllClients()
@@ -242,9 +257,11 @@ function Inner() {
   const clearAll = () => { setFilters(EMPTY_FILTERS); setQuery(""); };
 
   const allClients = allClientsRaw;
-  const scopedClients = showArchived
-    ? allClients.filter(c => c.archived)
-    : allClients.filter(c => !c.archived);
+  const scopedClients = showBlacklisted
+    ? allClients.filter(c => c.blacklisted)
+    : showArchived
+    ? allClients.filter(c => c.archived && !c.blacklisted)
+    : allClients.filter(c => !c.archived && !c.blacklisted);
   const afterFilters = applyFilters(scopedClients, filters);
   const results = afterFilters
     .filter(c => matchesSearch(c, query.trim()))
@@ -266,11 +283,23 @@ function Inner() {
 
   return (
     <div className="space-y-4">
+      {showImport && (
+        <ImportClientsModal
+          onClose={() => setShowImport(false)}
+          onDone={() => {
+            setShowImport(false);
+            getAllClients().then(setAllClientsRaw);
+          }}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-end justify-between gap-4 pb-2 border-b border-stone-100">
         <div>
           <h1 className="font-serif text-[36px] font-semibold leading-none tracking-wide text-stone-900">
-            {showArchived ? (
+            {showBlacklisted ? (
+              <>Clients <span className="text-stone-300 mx-3 font-light">/</span> <span className="text-red-500">Blacklisted</span></>
+            ) : showArchived ? (
               <>Clients <span className="text-stone-300 mx-3 font-light">/</span> <span className="text-[#B8960C]">Archived</span></>
             ) : filters.clientClass ? (
               <>Clients <span className="text-stone-300 mx-3 font-light">/</span> <span className="text-[#B8960C]">{filters.clientClass === "A" ? "Hot" : filters.clientClass === "B" ? "Warm" : "Cold"}</span></>
@@ -279,7 +308,7 @@ function Inner() {
             )}
           </h1>
           <p className="mt-2 text-[13px] uppercase tracking-[0.2em] text-stone-400 font-medium">
-            {showArchived ? "Archived client records" : "Client base & lead management"}
+            {showBlacklisted ? "Blacklisted client records" : showArchived ? "Archived client records" : "Client base & lead management"}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -287,6 +316,14 @@ function Inner() {
             <p className="text-[10px] uppercase tracking-wider font-semibold text-stone-400 mb-0.5">Showing</p>
             <p className="text-lg font-bold leading-none text-stone-700">{results.length}</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowImport(true)}
+            className="inline-flex items-center gap-1.5 px-4 h-10 rounded-md text-sm font-medium border border-stone-200 bg-white text-stone-700 shadow-sm hover:bg-stone-50 transition-colors whitespace-nowrap"
+          >
+            <FileSpreadsheet className="h-4 w-4 shrink-0 text-[#B8960C]" />
+            Import
+          </button>
           <Link href="/clients/new" className="inline-flex items-center gap-1.5 px-4 h-10 rounded-md text-sm font-medium bg-[#B8960C] text-white shadow-sm hover:bg-[#9e7f0a] transition-colors whitespace-nowrap">
             <Plus className="h-4 w-4 shrink-0" />
             New Client
@@ -399,9 +436,12 @@ function Inner() {
 
       {/* Results */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className={showArchived
+          ? "bg-white rounded-xl border border-stone-200 divide-y divide-stone-100 animate-pulse overflow-hidden"
+          : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+        }>
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-40 rounded-xl bg-stone-100 animate-pulse" />
+            <div key={i} className={showArchived ? "h-14 bg-stone-50" : "h-40 rounded-xl bg-stone-100"} />
           ))}
         </div>
       ) : results.length === 0 ? (
@@ -409,9 +449,123 @@ function Inner() {
           <p className="text-stone-400 text-sm">No clients match the current filters.</p>
           <button onClick={clearAll} className="text-xs text-[#B8960C] hover:underline">Clear all filters</button>
         </div>
+      ) : showArchived ? (
+        /* ── Archived list view ─────────────────────────────────── */
+        <div className="space-y-3">
+          {/* Bulk-action bar */}
+          <div className="flex items-center justify-between gap-4 py-2">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={selected.size === results.length && results.length > 0}
+                onChange={e => setSelected(e.target.checked ? new Set(results.map(c => c.id)) : new Set())}
+                className="h-4 w-4 rounded border-stone-300 accent-[#B8960C] cursor-pointer"
+              />
+              <span className="text-sm text-stone-500">
+                {selected.size > 0 ? `${selected.size} selected` : "Select all"}
+              </span>
+            </label>
+            {selected.size > 0 && (
+              <button
+                onClick={async () => {
+                  if (!confirm(`Permanently delete ${selected.size} client${selected.size > 1 ? "s" : ""}? This cannot be undone.`)) return;
+                  setDeleting(true);
+                  const ids = Array.from(selected);
+                  await Promise.all(ids.map(id => deleteClient(id).catch(() => {})));
+                  setAllClientsRaw(prev => prev.filter(c => !ids.includes(c.id)));
+                  setSelected(new Set());
+                  setDeleting(false);
+                }}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+                {deleting ? "Deleting…" : `Delete ${selected.size}`}
+              </button>
+            )}
+          </div>
+
+          {/* List table */}
+          <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+            {/* Header row */}
+            <div className="grid grid-cols-[40px_1fr_160px_140px_120px] gap-4 px-4 py-2.5 bg-stone-50 border-b border-stone-100 text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+              <div />
+              <div>Client</div>
+              <div>Contact</div>
+              <div>Archived</div>
+              <div>Stage</div>
+            </div>
+
+            <div className="divide-y divide-stone-100">
+              {results.map(c => {
+                const isChecked = selected.has(c.id);
+                const fullName = `${c.firstName} ${c.lastName}`;
+                const archivedDate = c.archivedAt
+                  ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(c.archivedAt))
+                  : "—";
+                const stageLabel = c.stage.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+                return (
+                  <div
+                    key={c.id}
+                    className={`grid grid-cols-[40px_1fr_160px_140px_120px] gap-4 px-4 py-3.5 items-center transition-colors ${
+                      isChecked ? "bg-red-50/60" : "hover:bg-stone-50"
+                    }`}
+                  >
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={e => {
+                        const next = new Set(selected);
+                        e.target.checked ? next.add(c.id) : next.delete(c.id);
+                        setSelected(next);
+                      }}
+                      onClick={e => e.stopPropagation()}
+                      className="h-4 w-4 rounded border-stone-300 accent-[#B8960C] cursor-pointer"
+                    />
+
+                    {/* Name */}
+                    <Link href={`/clients/${c.id}`} className="group min-w-0">
+                      <p className="text-sm font-semibold text-stone-800 group-hover:text-[#B8960C] truncate transition-colors">{fullName}</p>
+                      {c.primaryAgent && (
+                        <p className="text-[11px] text-stone-400 truncate">{c.primaryAgent}</p>
+                      )}
+                    </Link>
+
+                    {/* Contact */}
+                    <div className="min-w-0">
+                      {c.email && <p className="text-xs text-stone-500 truncate">{c.email}</p>}
+                      {c.phone && <p className="text-xs text-stone-400 truncate font-mono">{c.phone}</p>}
+                    </div>
+
+                    {/* Archived date */}
+                    <p className="text-xs text-stone-400">{archivedDate}</p>
+
+                    {/* Stage */}
+                    <p className="text-xs text-stone-500 truncate">{stageLabel}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       ) : (
+        /* ── Normal card grid ───────────────────────────────────── */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {results.map(c => <ClientCard key={c.id} client={c} />)}
+          {results.map(c => (
+            <ClientCard
+              key={c.id}
+              client={c}
+              onStageChange={(newStage) =>
+                setAllClientsRaw(prev => prev.map(x => x.id === c.id ? { ...x, stage: newStage } : x))
+              }
+              onArchiveChange={(archived) =>
+                setAllClientsRaw(prev => prev.map(x => x.id === c.id ? { ...x, archived } : x))
+              }
+            />
+          ))}
         </div>
       )}
     </div>

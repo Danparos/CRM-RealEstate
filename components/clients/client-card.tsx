@@ -1,12 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ClientClassBadge } from "@/components/crm/client-class-badge";
 import { PriceGroupBadge } from "@/components/crm/price-group-badge";
-import { PipelineStageBadge } from "@/components/crm/pipeline-stage-badge";
 import { Avatar } from "@/components/ui/avatar";
-import type { Client } from "@/types";
+import { updateClientStage, updateClientArchived } from "@/lib/db/clients";
+import type { Client, PipelineStage } from "@/types";
 
 const FLAGS: Record<string, string> = {
   DE: "🇩🇪", FR: "🇫🇷", GB: "🇬🇧", GR: "🇬🇷",
@@ -38,12 +39,54 @@ const BORDER: Record<string, string> = {
   C: "border-l-[3px] border-l-stone-200",
 };
 
-export function ClientCard({ client }: { client: Client }) {
+const STAGE_OPTIONS: { value: PipelineStage; label: string; bg: string; text: string; border: string }[] = [
+  { value: "new_inquiry",           label: "New Inquiry",  bg: "bg-sky-100",      text: "text-sky-700",     border: "border-sky-300" },
+  { value: "qualified",             label: "Qualified",    bg: "bg-violet-100",   text: "text-violet-700",  border: "border-violet-300" },
+  { value: "property_presentation", label: "Viewing",      bg: "bg-indigo-100",   text: "text-indigo-700",  border: "border-indigo-300" },
+  { value: "offer_submitted",       label: "Offer",        bg: "bg-[#fdf3c8]",    text: "text-[#7a6008]",   border: "border-[#B8960C]" },
+  { value: "negotiation",           label: "Negotiating",  bg: "bg-orange-100",   text: "text-orange-700",  border: "border-orange-300" },
+  { value: "legal_process",         label: "Legal",        bg: "bg-[#f5e6d3]",    text: "text-[#7b4a1e]",   border: "border-[#CD853F]" },
+  { value: "signed_closed",         label: "Closed",       bg: "bg-emerald-600",  text: "text-white",       border: "border-emerald-700" },
+];
+
+export function ClientCard({
+  client,
+  onStageChange,
+  onArchiveChange,
+}: {
+  client: Client;
+  onStageChange?: (newStage: PipelineStage) => void;
+  onArchiveChange?: (archived: boolean) => void;
+}) {
   const router = useRouter();
+  const [stage, setStage]       = useState<PipelineStage>(client.stage);
+  const [archived, setArchived] = useState(!!client.archived);
+  const [saving, setSaving]     = useState(false);
+
   const range = budgetRange(client.budgetMin, client.budgetMax);
   const daysInStage = client.stageEnteredAt
     ? Math.floor((Date.now() - +new Date(client.stageEnteredAt)) / 86_400_000)
     : null;
+
+  const stageInfo = STAGE_OPTIONS.find(s => s.value === stage) ?? STAGE_OPTIONS[0];
+
+  const handleStageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
+    const newStage = e.target.value as PipelineStage;
+    setStage(newStage);
+    setSaving(true);
+    await updateClientStage(client.id, newStage);
+    setSaving(false);
+    onStageChange?.(newStage);
+  };
+
+  const handleArchiveToggle = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const isActive = e.target.checked;
+    setArchived(!isActive);
+    await updateClientArchived(client.id, !isActive);
+    onArchiveChange?.(!isActive);
+  };
 
   return (
     <div
@@ -53,7 +96,8 @@ export function ClientCard({ client }: { client: Client }) {
         "border border-stone-200",
         BORDER[client.clientClass] ?? "",
         "shadow-sm transition-all duration-150 ease-out",
-        "hover:-translate-y-0.5 hover:shadow-md"
+        "hover:-translate-y-0.5 hover:shadow-md",
+        archived && "opacity-60"
       )}
     >
       {/* Name + class */}
@@ -61,7 +105,25 @@ export function ClientCard({ client }: { client: Client }) {
         <span className="font-serif text-lg font-bold text-gray-900 leading-tight truncate">
           {client.firstName} {client.lastName}
         </span>
-        <ClientClassBadge clientClass={client.clientClass} />
+        <div className="flex items-center gap-2 shrink-0">
+          <ClientClassBadge clientClass={client.clientClass} />
+          {/* Active checkbox */}
+          <label
+            onClick={e => e.stopPropagation()}
+            className="flex items-center gap-1 cursor-pointer select-none"
+            title={archived ? "Archived — click to reactivate" : "Active — click to archive"}
+          >
+            <input
+              type="checkbox"
+              checked={!archived}
+              onChange={handleArchiveToggle}
+              className="h-3.5 w-3.5 rounded border-stone-300 accent-[#B8960C] cursor-pointer"
+            />
+            <span className="text-[10px] text-stone-400 font-medium">
+              {archived ? "Archived" : "Active"}
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* Flag + language + price group */}
@@ -82,8 +144,23 @@ export function ClientCard({ client }: { client: Client }) {
       {/* Budget */}
       {range && <div className="text-xs font-semibold text-[#B8960C] tracking-wide">{range}</div>}
 
-      {/* Stage */}
-      <div><PipelineStageBadge stage={client.stage} size="sm" /></div>
+      {/* Stage — inline select styled as badge */}
+      <div onClick={e => e.stopPropagation()}>
+        <select
+          value={stage}
+          onChange={handleStageChange}
+          disabled={saving}
+          className={cn(
+            "text-[10px] font-medium tracking-wide rounded border px-1.5 py-0.5 cursor-pointer appearance-none outline-none transition-opacity",
+            stageInfo.bg, stageInfo.text, stageInfo.border,
+            saving && "opacity-50"
+          )}
+        >
+          {STAGE_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
 
       {/* Property interest */}
       {client.propertyInterest && (
@@ -100,7 +177,7 @@ export function ClientCard({ client }: { client: Client }) {
         </div>
       )}
 
-      {/* Email — stops propagation so clicking it opens mail, not the detail page */}
+      {/* Email */}
       {client.email && (
         <a
           href={`mailto:${client.email}`}

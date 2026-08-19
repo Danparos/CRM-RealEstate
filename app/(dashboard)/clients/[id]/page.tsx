@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { mockClients } from "@/lib/mock-data";
 import { ClientDetail } from "@/components/clients/client-detail";
 import { LocalClientLoader } from "@/components/clients/local-client-loader";
@@ -14,16 +13,6 @@ export default function ClientPage({ params }: Props) {
     return <ClientDetail client={client} />;
   }
 
-  if (params.id.startsWith("local-")) {
-    return <LocalClientLoader id={params.id} />;
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4">
-      <p className="font-serif text-xl text-stone-500">Client not found</p>
-      <Link href="/clients" className="text-sm text-[#B8960C] hover:underline">
-        ← Back to Clients
-      </Link>
-    </div>
-  );
+  // Any non-mock client — load from Supabase
+  return <LocalClientLoader id={params.id} />;
 }

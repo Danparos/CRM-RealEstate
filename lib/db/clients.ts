@@ -13,7 +13,7 @@ function toClient(row: Record<string, unknown>): Client {
     nationality: row.nationality as string | undefined,
     language:    row.language   as string | undefined,
 
-    clientClass: row.client_class as Client["clientClass"],
+    clientClass: (["A","B","C"].includes(row.client_class as string) ? row.client_class : "C") as Client["clientClass"],
     priceGroup:  row.price_group  as Client["priceGroup"],
     budgetMin:   row.budget_min   as number | undefined,
     budgetMax:   row.budget_max   as number | undefined,
@@ -38,6 +38,8 @@ function toClient(row: Record<string, unknown>): Client {
     updatedAt:        row.updated_at         as string | undefined,
     archived:         row.archived           as boolean | undefined,
     archivedAt:       row.archived_at        as string | undefined,
+    blacklisted:      row.blacklisted        as boolean | undefined,
+    blacklistedAt:    row.blacklisted_at     as string | undefined,
   };
 }
 
@@ -77,8 +79,10 @@ function toRow(c: Client): Record<string, unknown> {
     // created_at and updated_at are managed by Supabase defaults; only pass if present
     ...(c.createdAt  ? { created_at:  c.createdAt  } : {}),
     ...(c.updatedAt  ? { updated_at:  c.updatedAt  } : {}),
-    archived:    c.archived   ?? null,
-    archived_at: c.archivedAt ?? null,
+    archived:       c.archived      ?? null,
+    archived_at:    c.archivedAt    ?? null,
+    blacklisted:    c.blacklisted   ?? null,
+    blacklisted_at: c.blacklistedAt ?? null,
   };
 }
 
@@ -114,14 +118,10 @@ export async function getClient(id: string): Promise<Client | null> {
 }
 
 export async function upsertClient(c: Client): Promise<void> {
-  try {
-    const { error } = await createClient()
-      .from("clients")
-      .upsert(toRow(c), { onConflict: "id" });
-    if (error) console.error("[db/clients] upsertClient:", error.message);
-  } catch (err) {
-    console.error("[db/clients] upsertClient unexpected:", err);
-  }
+  const { error } = await createClient()
+    .from("clients")
+    .upsert(toRow(c), { onConflict: "id" });
+  if (error) throw new Error(error.message);
 }
 
 /** Returns a new unique client ID in the form "local-{timestamp}" */
@@ -149,6 +149,37 @@ export async function updateClientStage(
     if (error) console.error("[db/clients] updateClientStage:", error.message);
   } catch (err) {
     console.error("[db/clients] updateClientStage unexpected:", err);
+  }
+}
+
+export async function deleteClient(clientId: string): Promise<void> {
+  const { error } = await createClient().from("clients").delete().eq("id", clientId);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateClientBlacklisted(clientId: string, blacklisted: boolean): Promise<void> {
+  const now = new Date().toISOString();
+  try {
+    const { error } = await createClient()
+      .from("clients")
+      .update({ blacklisted, blacklisted_at: blacklisted ? now : null, updated_at: now })
+      .eq("id", clientId);
+    if (error) console.error("[db/clients] updateClientBlacklisted:", error.message);
+  } catch (err) {
+    console.error("[db/clients] updateClientBlacklisted unexpected:", err);
+  }
+}
+
+export async function updateClientArchived(clientId: string, archived: boolean): Promise<void> {
+  const now = new Date().toISOString();
+  try {
+    const { error } = await createClient()
+      .from("clients")
+      .update({ archived, archived_at: archived ? now : null, updated_at: now })
+      .eq("id", clientId);
+    if (error) console.error("[db/clients] updateClientArchived:", error.message);
+  } catch (err) {
+    console.error("[db/clients] updateClientArchived unexpected:", err);
   }
 }
 

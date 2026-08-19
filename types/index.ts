@@ -85,6 +85,8 @@ export interface Client {
   updatedAt?: string;
   archived?: boolean;
   archivedAt?: string;
+  blacklisted?: boolean;
+  blacklistedAt?: string;
 }
 
 export interface Activity {

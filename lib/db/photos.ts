@@ -116,9 +116,11 @@ export async function reorderPhotosForProperty(
 
   if (updates.length === 0) return;
 
-  const { error: upsertError } = await supabase
-    .from("property_photos")
-    .upsert(updates, { onConflict: "id" });
-
-  if (upsertError) throw new Error(`Failed to reorder photos: ${upsertError.message}`);
+  for (const { id, position } of updates) {
+    const { error: updateError } = await supabase
+      .from("property_photos")
+      .update({ position })
+      .eq("id", id);
+    if (updateError) throw new Error(`Failed to reorder photos: ${updateError.message}`);
+  }
 }
